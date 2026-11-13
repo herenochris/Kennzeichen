@@ -125,6 +125,11 @@
     return letters + ' ' + digits;
   }
 
+  // Ereignis an den Besucherzähler melden (falls geladen; Fehler egal)
+  function track(name) {
+    try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: name, event: true }); } catch { /* egal */ }
+  }
+
   function toast(msg) {
     const t = $('toast');
     t.textContent = msg; t.hidden = false;
@@ -334,6 +339,7 @@
   function updateStatsAfterDaily() {
     const st = store.get('kz-stats', { played: 0, streak: 0, maxStreak: 0, last: null, best: 0 });
     if (st.last === game.dailyDate) return st;
+    track('raetsel-geloest');
     const previous = puzzleNo(game.dailyDate) - 1;
     st.streak = st.last && puzzleNo(st.last) === previous ? st.streak + 1 : 1;
     st.maxStreak = Math.max(st.maxStreak, st.streak);
@@ -447,6 +453,7 @@
     $('rp-meta').textContent = LEVELS[r.level].name + ' · Gesamt ' + fmtNum(r.total) + ' Punkte · Rekord ' + fmtNum(store.get(bestKey(), 0));
   }
   function finishRun() {
+    track('lauf-beendet');
     const r = game.run;
     r.done.push({ pts: curPoints(), passed: false });
     r.cur = [];
@@ -494,6 +501,7 @@
     showRunOver();
   }
   function startEndless(level) {
+    track('freier-modus-' + (level || game.level));
     if (level) { game.level = level; store.set('kz-level', level); }
     newRun();
     setMode('endless');
@@ -695,6 +703,7 @@
   $('help-btn').addEventListener('click', () => $('help').showModal());
   $('share-btn').addEventListener('click', async () => {
     const text = shareText();
+    track('ergebnis-geteilt');
     try {
       if (navigator.share && matchMedia('(pointer: coarse)').matches) { await navigator.share({ text }); return; }
       await navigator.clipboard.writeText(text);
