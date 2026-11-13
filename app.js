@@ -347,7 +347,7 @@
   function showSummary() {
     const st = updateStatsAfterDaily();
     const num = puzzleNo(game.dailyDate);
-    $('sum-title').textContent = 'Kennzeichen-Rätsel #' + num;
+    $('sum-title').textContent = 'GeoKennzeichen #' + num;
     $('sum-total').textContent = fmtNum(dailyTotal());
     $('sum-max').textContent = fmtNum(DAILY_ROUNDS * MAX_POINTS);
     const list = $('sum-list');
@@ -377,7 +377,7 @@
   function shareText() {
     const num = puzzleNo(game.dailyDate);
     const line = game.daily.guesses.map((g) => emoji(g.km)).join('');
-    return 'Kennzeichen-Rätsel #' + num + ' 🇩🇪\n' + line + '  ' + fmtNum(dailyTotal()) + '/' + fmtNum(DAILY_ROUNDS * MAX_POINTS) + '\n' + location.href.split('#')[0];
+    return 'GeoKennzeichen #' + num + ' 🇩🇪\n' + line + '  ' + fmtNum(dailyTotal()) + '/' + fmtNum(DAILY_ROUNDS * MAX_POINTS) + '\n' + 'https://geokennzeichen.de';
   }
 
   function tickCountdown() {

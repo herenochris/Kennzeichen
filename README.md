@@ -1,4 +1,4 @@
-# Kennzeichen-Raten
+# GeoKennzeichen
 
 Ein Ratespiel im Browser: Du siehst ein deutsches Kfz-Kennzeichen und tippst auf der Karte an, woher es kommt.
 
