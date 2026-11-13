@@ -8,6 +8,10 @@
   const PASS_POINTS = 2500;   // so viele Punkte braucht man pro Runde, um weiterzukommen
   const EPOCH = '2026-11-13'; // Rätsel #1
   const DAILY_V2_FROM = '2026-11-14'; // ab hier steigt die Schwierigkeit pro Runde
+  // Wie oft es ein neues Rätsel gibt. 1440 = täglich um Mitternacht (deutsche Zeit).
+  const PUZZLE_MINUTES = 2;
+  const PERIOD_MS = PUZZLE_MINUTES * 60000;
+  const EPOCH_MS = Date.parse(EPOCH + 'T00:00:00+01:00');
   const LETTERS = 'ABCDEFGHIJKLMNOPRSTUVWXYZ';
 
   // Schwierigkeit = Rang nach geschätzter Fahrzeugzahl (1 = am häufigsten)
@@ -33,6 +37,21 @@
     },
   };
 
+  // Kennung des aktuellen Rätsels: bei täglichem Rätsel das Datum, sonst die Nummer des Zeitfensters
+  function puzzleId() {
+    return PUZZLE_MINUTES === 1440 ? berlinDate() : 'p' + Math.floor(Date.now() / PERIOD_MS);
+  }
+  function puzzleNo(id) {
+    if (!id) return 0;
+    if (id[0] !== 'p') return dayIndex(id) + 1;
+    return Number(id.slice(1)) - Math.floor(EPOCH_MS / PERIOD_MS) + 1;
+  }
+  function secondsLeft() {
+    if (PUZZLE_MINUTES !== 1440) return Math.ceil((PERIOD_MS - (Date.now() % PERIOD_MS)) / 1000);
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+    const get = (x) => Number(parts.find((y) => y.type === x).value);
+    return 86400 - (get('hour') * 3600 + get('minute') * 60 + get('second'));
+  }
   function berlinDate(d = new Date()) {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
   }
@@ -251,8 +270,12 @@
   }
 
   function loadDaily() {
-    const date = berlinDate();
-    const { picks, rnd } = date >= DAILY_V2_FROM ? dailyPicksV2(date) : dailyPicksV1(date);
+    const date = puzzleId();
+    const { picks, rnd } = date[0] === 'p' || date >= DAILY_V2_FROM ? dailyPicksV2(date) : dailyPicksV1(date);
+    // alte Rätsel-Spielstände aufräumen
+    try {
+      Object.keys(localStorage).filter((k) => k.startsWith('kz-daily-p') && k !== 'kz-daily-' + date).forEach((k) => localStorage.removeItem(k));
+    } catch { /* egal */ }
     game.dailyDate = date;
     game.dailyList = picks;
     game.dailyRests = picks.map((i) => plateRest(PLATES[i].c, rnd));
@@ -263,7 +286,7 @@
   const dailyDone = () => game.daily.guesses.length >= DAILY_ROUNDS;
 
   function startDaily() {
-    if (game.dailyDate !== berlinDate()) loadDaily();
+    if (game.dailyDate !== puzzleId()) loadDaily();
     const n = game.daily.guesses.length;
     if (n >= DAILY_ROUNDS) {
       showDailyReview();
@@ -285,10 +308,10 @@
     if (pts.length) fitWithSheet(L.latLngBounds(pts), 7);
     renderPlate(dailyPlate(DAILY_ROUNDS - 1).c, game.dailyRests[DAILY_ROUNDS - 1], false);
     game.answered = true;
-    $('round-label').textContent = 'Rätsel #' + (dayIndex(game.dailyDate) + 1) + ' – fertig';
+    $('round-label').textContent = 'Rätsel #' + puzzleNo(game.dailyDate) + ' – fertig';
     $('score-label').textContent = fmtNum(dailyTotal()) + ' Punkte';
     $('prompt').className = 'prompt';
-    $('prompt').innerHTML = 'Du hast das heutige Rätsel gelöst (<b></b> Punkte). Morgen gibt es neue Kennzeichen – oder spiel weiter im <b>freien Modus</b>.';
+    $('prompt').innerHTML = 'Du hast das aktuelle Rätsel gelöst (<b></b> Punkte). Bald gibt es neue Kennzeichen – oder spiel weiter im <b>freien Modus</b>.';
     $('prompt').querySelector('b').textContent = fmtNum(dailyTotal());
     $('hint-btn').hidden = true;
     $('guess-btn').hidden = true;
@@ -298,8 +321,8 @@
   function updateStatsAfterDaily() {
     const st = store.get('kz-stats', { played: 0, streak: 0, maxStreak: 0, last: null, best: 0 });
     if (st.last === game.dailyDate) return st;
-    const yesterday = dayIndex(game.dailyDate) - 1;
-    st.streak = st.last && dayIndex(st.last) === yesterday ? st.streak + 1 : 1;
+    const previous = puzzleNo(game.dailyDate) - 1;
+    st.streak = st.last && puzzleNo(st.last) === previous ? st.streak + 1 : 1;
     st.maxStreak = Math.max(st.maxStreak, st.streak);
     st.played += 1;
     st.best = Math.max(st.best, dailyTotal());
@@ -310,7 +333,7 @@
 
   function showSummary() {
     const st = updateStatsAfterDaily();
-    const num = dayIndex(game.dailyDate) + 1;
+    const num = puzzleNo(game.dailyDate);
     $('sum-title').textContent = 'Kennzeichen-Rätsel #' + num;
     $('sum-total').textContent = fmtNum(dailyTotal());
     $('sum-max').textContent = fmtNum(DAILY_ROUNDS * MAX_POINTS);
@@ -339,24 +362,25 @@
   }
 
   function shareText() {
-    const num = dayIndex(game.dailyDate) + 1;
+    const num = puzzleNo(game.dailyDate);
     const line = game.daily.guesses.map((g) => emoji(g.km)).join('');
     return 'Kennzeichen-Rätsel #' + num + ' 🇩🇪\n' + line + '  ' + fmtNum(dailyTotal()) + '/' + fmtNum(DAILY_ROUNDS * MAX_POINTS) + '\n' + location.href.split('#')[0];
   }
 
   function tickCountdown() {
-    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
-    const get = (t) => Number(parts.find((x) => x.type === t).value);
-    let left = 86400 - (get('hour') * 3600 + get('minute') * 60 + get('second'));
+    let left = secondsLeft();
     const h = Math.floor(left / 3600); left %= 3600;
     const m = Math.floor(left / 60), s = left % 60;
-    $('countdown').textContent = [h, m, s].map((x) => String(x).padStart(2, '0')).join(':');
+    $('countdown').textContent = (h ? [h, m, s] : [m, s]).map((x) => String(x).padStart(2, '0')).join(':');
   }
   setInterval(() => {
     if ($('summary').open) tickCountdown();
-    if (game.dailyDate && game.dailyDate !== berlinDate() && !$('summary').open && game.answered && $('result').hidden) {
+    // Neues Rätsel verfügbar: im Rätsel-Modus direkt wechseln (nicht mitten in einem Tipp)
+    if (game.mode === 'daily' && game.dailyDate && game.dailyDate !== puzzleId() && game.answered && $('result').hidden) {
+      if ($('summary').open) $('summary').close();
       loadDaily();
       setMode('daily');
+      toast('Neues Rätsel! 🎉');
     }
   }, 1000);
 
@@ -502,7 +526,7 @@
     $('hint-btn').disabled = false;
     if (game.mode === 'daily') {
       const n = game.daily.guesses.length;
-      $('round-label').textContent = 'Rätsel #' + (dayIndex(game.dailyDate) + 1) + ' · Kennzeichen ' + (n + 1) + ' / ' + DAILY_ROUNDS;
+      $('round-label').textContent = 'Rätsel #' + puzzleNo(game.dailyDate) + ' · Kennzeichen ' + (n + 1) + ' / ' + DAILY_ROUNDS;
       $('score-label').textContent = fmtNum(dailyTotal()) + ' Punkte';
     } else {
       $('round-label').textContent = 'Frei · ' + LEVELS[game.run.level].name + ' · Runde ' + roundNo() + ' · ' + (game.run.cur.length + 1) + ' / ' + ROUND_SIZE;
@@ -680,6 +704,7 @@
   });
 
   // ---------- Start ----------
+  $('help-daily').textContent = PUZZLE_MINUTES === 1440 ? 'jeden Tag' : 'alle ' + PUZZLE_MINUTES + ' Minuten';
   game.level = LEVELS[store.get('kz-level', 'leicht')] ? store.get('kz-level', 'leicht') : 'leicht';
   loadDaily();
   if (!store.get('kz-seen-help', false)) { store.set('kz-seen-help', true); $('help').showModal(); }
