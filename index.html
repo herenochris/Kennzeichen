@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Kennzeichen-Raten</title>
+  <meta name="description" content="Woher kommt dieses Kennzeichen? Tägliches Rätsel und Endlos-Modus mit allen deutschen Unterscheidungszeichen.">
+  <meta name="theme-color" content="#003399">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='2' y='16' width='60' height='32' rx='5' fill='%23fff' stroke='%23111' stroke-width='3'/%3E%3Crect x='3.5' y='17.5' width='12' height='29' rx='3' fill='%23039'/%3E%3Ctext x='38' y='41' font-family='Arial' font-weight='700' font-size='20' text-anchor='middle'%3EKZ%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1 class="brand"><span class="brand-d">D</span>Kennzeichen-Raten</h1>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-mode="daily" id="tab-daily">Tägliches Rätsel</button>
+      <button class="tab" role="tab" data-mode="endless" id="tab-endless">Endlos</button>
+    </nav>
+    <button class="icon-btn" id="help-btn" aria-label="Spielregeln">?</button>
+  </header>
+
+  <main class="layout">
+    <section class="panel" id="panel">
+      <div class="panel-head">
+        <span class="round-label" id="round-label">Runde 1 / 5</span>
+        <span class="score-label" id="score-label">0 Punkte</span>
+      </div>
+
+      <div class="plate" id="plate" aria-live="polite">
+        <div class="plate-eu"><svg class="plate-stars" viewBox="0 0 20 20" aria-hidden="true"><g fill="#ffcc00" id="stars"></g></svg><span>D</span></div>
+        <div class="plate-text">
+          <span class="plate-code" id="plate-code">M</span>
+          <span class="plate-seals" aria-hidden="true"><i class="seal seal-hu"></i><i class="seal seal-state"></i></span>
+          <span class="plate-rest" id="plate-rest">AB 123</span>
+        </div>
+      </div>
+
+      <p class="prompt" id="prompt">Woher kommt dieses Kennzeichen? Tippe auf die Karte.</p>
+
+      <div class="actions" id="actions-guess">
+        <button class="btn btn-ghost" id="hint-btn">Hinweis: Bundesland <small>(−50 %)</small></button>
+        <button class="btn btn-primary" id="guess-btn" disabled>Tipp abgeben</button>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <div class="result-points" id="result-points">0</div>
+        <div class="result-dist" id="result-dist"></div>
+        <div class="result-origin" id="result-origin"></div>
+        <button class="btn btn-primary" id="next-btn">Weiter</button>
+      </div>
+
+      <div class="endless-stats" id="endless-stats" hidden>
+        <div><b id="es-rounds">0</b><span>Runden</span></div>
+        <div><b id="es-avg">–</b><span>Ø Entfernung</span></div>
+        <div><b id="es-best">0</b><span>Bester Lauf</span></div>
+        <button class="btn btn-link" id="restart-btn">Neu starten</button>
+      </div>
+      <p class="hard-toggle" id="hard-wrap" hidden>
+        <label><input type="checkbox" id="hard-toggle" checked> Auch Alt-Kennzeichen (z. B. BÜD, WAN, LBZ)</label>
+      </p>
+    </section>
+
+    <section class="map-wrap">
+      <div id="map" aria-label="Deutschlandkarte"></div>
+    </section>
+  </main>
+
+  <dialog class="modal" id="summary">
+    <form method="dialog" class="modal-inner">
+      <h2 id="sum-title">Rätsel #1</h2>
+      <p class="sum-total"><b id="sum-total">0</b> / <span id="sum-max">5000</span> Punkte</p>
+      <ol class="sum-list" id="sum-list"></ol>
+      <div class="stats-row">
+        <div><b id="st-played">0</b><span>Gespielt</span></div>
+        <div><b id="st-streak">0</b><span>Serie</span></div>
+        <div><b id="st-maxstreak">0</b><span>Längste Serie</span></div>
+        <div><b id="st-best">0</b><span>Bestwert</span></div>
+      </div>
+      <p class="countdown">Nächstes Rätsel in <b id="countdown">--:--:--</b></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="share-btn">Ergebnis teilen</button>
+        <button type="button" class="btn btn-ghost" id="to-endless-btn">Endlos spielen</button>
+        <button class="btn btn-link" value="close">Karte ansehen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="help">
+    <form method="dialog" class="modal-inner">
+      <h2>So wird gespielt</h2>
+      <p>Du siehst ein deutsches Kfz-Kennzeichen. Tippe auf der Karte an, wo das Unterscheidungszeichen herkommt, und gib deinen Tipp ab.</p>
+      <ul>
+        <li>Je näher du am Herkunftsort liegst, desto mehr Punkte (max. 1000 pro Runde).</li>
+        <li>Der Hinweis zeigt das Bundesland, halbiert aber die Punkte der Runde.</li>
+        <li><b>Tägliches Rätsel:</b> jeden Tag 5 neue Kennzeichen – für alle gleich.</li>
+        <li><b>Endlos:</b> so viele Runden du willst. Der Lauf endet, wenn du in einer Runde mehr als 200 km danebenliegst.</li>
+      </ul>
+      <p class="fine">Als Ziel gilt der Ort, nach dem das Kürzel benannt ist (meist die heutige oder frühere Kreisstadt).</p>
+      <div class="modal-actions"><button class="btn btn-primary" value="close">Los geht's</button></div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="plates.js"></script>
+  <script src="germany.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
