@@ -61,12 +61,14 @@
     return 2 * R * Math.asin(Math.sqrt(h));
   }
   // Punkte: 3/4 strenge Kurve + 1/4 großzügige Kurve
-  // (z. B. 25 km ≈ 884, 50 km ≈ 757, 100 km ≈ 551, 150 km ≈ 391, 200 km ≈ 266, 300 km ≈ 108)
+  // (z. B. 50 km ≈ 757, 100 km ≈ 551, 200 km ≈ 266, 250 km ≈ 130, 300 km ≈ 54, ab 400 km 0)
   function pointsFor(km, hinted) {
     const strict = km < 5 ? 1 : Math.exp(-(km - 5) / 120);
     const d = Math.max(0, km - 10) / 220;
     const gentle = Math.exp(-d * d);
-    const p = Math.round(MAX_POINTS * (0.75 * strict + 0.25 * gentle));
+    // ab 200 km zusätzlicher Abzug: bis 400 km linear auf 0
+    const far = km > 200 ? Math.max(0, 1 - (km - 200) / 200) : 1;
+    const p = Math.round(MAX_POINTS * (0.75 * strict + 0.25 * gentle) * far);
     return hinted ? Math.round(p / 2) : p;
   }
   function fmtKm(km) { return km < 10 ? km.toFixed(1).replace('.', ',') + ' km' : Math.round(km).toLocaleString('de-DE') + ' km'; }
