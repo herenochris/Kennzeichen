@@ -71,6 +71,7 @@ button { font: inherit; color: inherit; }
   cursor: pointer; color: var(--muted); font-weight: 600; font-size: 14px;
 }
 .tab[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.tab.locked::after { content: " 🔒"; font-size: 11px; }
 .icon-btn {
   width: 34px; height: 34px; border-radius: 50%;
   border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 700;
@@ -224,6 +225,7 @@ button { font: inherit; color: inherit; }
 .modal-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .modal-actions .btn-primary { flex-basis: 100%; }
 .modal-actions .btn-ghost { flex: 1; }
+.modal-actions .btn-link { margin: 0 auto; }
 
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
@@ -231,13 +233,31 @@ button { font: inherit; color: inherit; }
   font-weight: 600; z-index: 2000; box-shadow: var(--shadow);
 }
 
+/* Auswahl der Schwierigkeit in der Zusammenfassung */
+.pick-level { border-top: 1px solid var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.pick-level h3 { margin: 0; font-size: 17px; }
+.pick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.pick {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 10px 12px; border-radius: 12px; cursor: pointer; text-align: left;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.pick b { font-size: 16px; }
+.pick span { font-size: 12px; color: var(--muted); }
+.pick:hover, .pick.current { border-color: var(--accent); }
+.pick[data-level="leicht"] b { color: var(--good); }
+.pick[data-level="mittel"] b { color: var(--mid); }
+.pick[data-level="schwer"] b, .pick[data-level="profi"] b { color: var(--bad); }
+.modal { max-height: calc(100dvh - 24px); }
+
 /* Mobile */
 @media (max-width: 760px) {
   .topbar { padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
   .brand { font-size: 16px; }
   .tabs { order: 3; width: 100%; margin: 0; }
   .tab { flex: 1; }
-  .icon-btn { margin-left: auto; }
+  .tab.locked::after { content: " 🔒"; font-size: 11px; }
+.icon-btn { margin-left: auto; }
   .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .panel { border-right: 0; border-bottom: 1px solid var(--border); padding: 12px 16px; gap: 10px; max-height: 52vh; }
   .plate { height: 64px; }
@@ -261,7 +281,15 @@ button { font: inherit; color: inherit; }
   .sheet .result-origin { font-size: 13px; }
   .result-tags { margin-bottom: 4px; }
   .endless-stats b { font-size: 16px; }
-  .stats-row b { font-size: 18px; }
+  .stats-row b { font-size: 16px; }
+  .stats-row > div { padding: 6px 2px; }
+  .stats-row span { font-size: 11px; }
+  .modal-inner { padding: 18px 16px; gap: 10px; }
+  .sum-total b { font-size: 26px; }
+  .sum-list { gap: 4px; }
+  .sum-list li { padding: 5px 8px; grid-template-columns: 54px 1fr auto; line-height: 1.25; }
+  .mini-plate { font-size: 14px; }
+  .pick { padding: 8px 10px; }
 }
 @media (max-width: 380px) {
   .plate-text { font-size: 32px; }

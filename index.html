@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Kennzeichen-Raten</title>
-  <meta name="description" content="Woher kommt dieses Kennzeichen? Tägliches Rätsel und Endlos-Modus mit allen deutschen Unterscheidungszeichen.">
+  <meta name="description" content="Woher kommt dieses Kennzeichen? Tägliches Rätsel und freier Modus mit allen deutschen Unterscheidungszeichen.">
   <meta name="theme-color" content="#003399">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='2' y='16' width='60' height='32' rx='5' fill='%23fff' stroke='%23111' stroke-width='3'/%3E%3Crect x='3.5' y='17.5' width='12' height='29' rx='3' fill='%23039'/%3E%3Ctext x='38' y='41' font-family='Arial' font-weight='700' font-size='20' text-anchor='middle'%3EKZ%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
@@ -15,7 +15,7 @@
     <h1 class="brand"><span class="brand-d">D</span>Kennzeichen-Raten</h1>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-mode="daily" id="tab-daily">Tägliches Rätsel</button>
-      <button class="tab" role="tab" data-mode="endless" id="tab-endless">Endlos</button>
+      <button class="tab" role="tab" data-mode="endless" id="tab-endless">Freier Modus</button>
     </nav>
     <button class="icon-btn" id="help-btn" aria-label="Spielregeln">?</button>
   </header>
@@ -83,6 +83,19 @@
       <h2 id="sum-title">Rätsel #1</h2>
       <p class="sum-total"><b id="sum-total">0</b> / <span id="sum-max">5000</span> Punkte</p>
       <ol class="sum-list" id="sum-list"></ol>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="share-btn">Ergebnis teilen</button>
+      </div>
+      <div class="pick-level">
+        <h3>Weiterspielen im freien Modus</h3>
+        <p class="fine">Wähle eine Schwierigkeit – je mehr Autos ein Kennzeichen tragen, desto leichter.</p>
+        <div class="pick-grid">
+          <button type="button" class="pick" data-level="leicht"><b>Leicht</b><span>B, M, HH, K …</span></button>
+          <button type="button" class="pick" data-level="mittel"><b>Mittel</b><span>GT, VS, OL …</span></button>
+          <button type="button" class="pick" data-level="schwer"><b>Schwer</b><span>KU, NDH, WAN …</span></button>
+          <button type="button" class="pick" data-level="profi"><b>Profi</b><span>BÜD, HDL, WOS …</span></button>
+        </div>
+      </div>
       <div class="stats-row">
         <div><b id="st-played">0</b><span>Gespielt</span></div>
         <div><b id="st-streak">0</b><span>Serie</span></div>
@@ -90,11 +103,7 @@
         <div><b id="st-best">0</b><span>Bestwert</span></div>
       </div>
       <p class="countdown">Nächstes Rätsel in <b id="countdown">--:--:--</b></p>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-primary" id="share-btn">Ergebnis teilen</button>
-        <button type="button" class="btn btn-ghost" id="to-endless-btn">Endlos spielen</button>
-        <button class="btn btn-link" value="close">Karte ansehen</button>
-      </div>
+      <div class="modal-actions"><button class="btn btn-link" value="close">Karte ansehen</button></div>
     </form>
   </dialog>
 
@@ -106,7 +115,7 @@
         <li>Je näher du am Herkunftsort liegst, desto mehr Punkte (max. 1000 pro Runde).</li>
         <li>Der Hinweis zeigt das Bundesland, halbiert aber die Punkte der Runde.</li>
         <li><b>Tägliches Rätsel:</b> jeden Tag 5 neue Kennzeichen – für alle gleich. Von Runde zu Runde werden sie seltener.</li>
-        <li><b>Endlos:</b> so viele Runden du willst, in vier Schwierigkeitsstufen. Je mehr Autos ein Kennzeichen tragen, desto leichter ist es. Der Lauf endet, wenn du mehr als 200 km danebenliegst.</li>
+        <li><b>Freier Modus</b> (nach dem Tagesrätsel): so viele Runden du willst, in vier Schwierigkeitsstufen. Je mehr Autos ein Kennzeichen tragen, desto leichter ist es. Der Lauf endet, wenn du mehr als 200 km danebenliegst.</li>
       </ul>
       <p class="fine">Als Ziel gilt der Ort, nach dem das Kürzel benannt ist (meist die heutige oder frühere Kreisstadt). Die Häufigkeit ist anhand der Einwohnerzahlen im Einzugsgebiet geschätzt.</p>
       <div class="modal-actions"><button class="btn btn-primary" value="close">Los geht's</button></div>

@@ -253,7 +253,7 @@
     $('round-label').textContent = 'Rätsel #' + (dayIndex(game.dailyDate) + 1) + ' – fertig';
     $('score-label').textContent = fmtNum(dailyTotal()) + ' Punkte';
     $('prompt').className = 'prompt';
-    $('prompt').innerHTML = 'Du hast das heutige Rätsel gelöst (<b></b> Punkte). Morgen gibt es neue Kennzeichen – oder spiel weiter im <b>Endlos-Modus</b>.';
+    $('prompt').innerHTML = 'Du hast das heutige Rätsel gelöst (<b></b> Punkte). Morgen gibt es neue Kennzeichen – oder spiel weiter im <b>freien Modus</b>.';
     $('prompt').querySelector('b').textContent = fmtNum(dailyTotal());
     $('hint-btn').hidden = true;
     $('guess-btn').hidden = true;
@@ -298,6 +298,7 @@
     $('st-streak').textContent = st.streak;
     $('st-maxstreak').textContent = st.maxStreak;
     $('st-best').textContent = fmtNum(st.best);
+    document.querySelectorAll('.pick').forEach((b) => b.classList.toggle('current', b.dataset.level === game.level));
     tickCountdown();
     if (!$('summary').open) $('summary').showModal();
   }
@@ -318,9 +319,9 @@
   }
   setInterval(() => {
     if ($('summary').open) tickCountdown();
-    if (game.mode === 'daily' && game.dailyDate && game.dailyDate !== berlinDate() && !$('summary').open && game.answered && $('result').hidden) {
+    if (game.dailyDate && game.dailyDate !== berlinDate() && !$('summary').open && game.answered && $('result').hidden) {
       loadDaily();
-      startDaily();
+      setMode('daily');
     }
   }, 1000);
 
@@ -406,7 +407,7 @@
       $('round-label').textContent = 'Rätsel #' + (dayIndex(game.dailyDate) + 1) + ' · Runde ' + (n + 1) + ' / ' + DAILY_ROUNDS;
       $('score-label').textContent = fmtNum(dailyTotal()) + ' Punkte';
     } else {
-      $('round-label').textContent = 'Endlos · ' + LEVELS[game.level].name + ' · Runde ' + (game.run.rounds + 1);
+      $('round-label').textContent = 'Frei · ' + LEVELS[game.level].name + ' · Runde ' + (game.run.rounds + 1);
       $('score-label').textContent = fmtNum(game.run.points) + ' Punkte';
       renderEndlessStats();
     }
@@ -479,7 +480,7 @@
       const newBest = r.points > best;
       if (newBest) store.set(bestKey(), r.points);
       $('score-label').textContent = fmtNum(r.points) + ' Punkte';
-      $('result-title').textContent = 'Endlos · Runde ' + r.rounds;
+      $('result-title').textContent = 'Frei · ' + LEVELS[game.level].name + ' · Runde ' + r.rounds;
       if (km > ENDLESS_FAIL_KM) {
         r.over = true;
         note.hidden = false;
@@ -510,12 +511,21 @@
   }
 
   // ---------- Moduswechsel ----------
+  function renderLock() {
+    const locked = !dailyDone();
+    $('tab-endless').classList.toggle('locked', locked);
+    $('tab-endless').title = locked ? 'Erst das Tagesrätsel lösen' : '';
+  }
   function setMode(mode) {
+    if (mode === 'endless' && !dailyDone()) {
+      toast('Löse zuerst das heutige Rätsel 🔒');
+      return;
+    }
     game.mode = mode;
+    renderLock();
     $('tab-daily').setAttribute('aria-selected', String(mode === 'daily'));
     $('tab-endless').setAttribute('aria-selected', String(mode === 'endless'));
     $('endless-box').hidden = mode !== 'endless';
-    try { history.replaceState(null, '', mode === 'endless' ? '#endlos' : location.pathname + location.search); } catch { /* egal */ }
     if (mode === 'daily') startDaily();
     else { if (!game.run || game.run.over) newRun(); nextEndless(); }
   }
@@ -550,7 +560,14 @@
       toast('Kopieren nicht möglich');
     }
   });
-  $('to-endless-btn').addEventListener('click', () => { $('summary').close(); setMode('endless'); });
+  document.querySelectorAll('.pick').forEach((b) => b.addEventListener('click', () => {
+    $('summary').close();
+    game.level = b.dataset.level;
+    store.set('kz-level', game.level);
+    renderLevels();
+    newRun();
+    setMode('endless');
+  }));
   document.addEventListener('keydown', (e) => {
     if (document.querySelector('dialog[open]')) return;
     if (e.key === 'Enter') {
@@ -564,5 +581,7 @@
   renderLevels();
   loadDaily();
   if (!store.get('kz-seen-help', false)) { store.set('kz-seen-help', true); $('help').showModal(); }
-  setMode(location.hash === '#endlos' ? 'endless' : 'daily');
+  // Beim Öffnen der Seite immer zuerst das Tagesrätsel
+  if (location.hash) { try { history.replaceState(null, '', location.pathname + location.search); } catch { /* egal */ } }
+  setMode('daily');
 })();
