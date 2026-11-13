@@ -16,10 +16,10 @@
 
   // Schwierigkeit = Rang nach geschätzter Fahrzeugzahl (1 = am häufigsten)
   const LEVELS = {
-    leicht: { name: 'Leicht', from: 1, to: 100, desc: 'Die 100 häufigsten Kennzeichen – Großstädte und große Kreise wie B, M, HH, K.' },
-    mittel: { name: 'Mittel', from: 101, to: 280, desc: 'Mittelgroße Kreise und Städte, z. B. GT, VS, BAD, OL.' },
-    schwer: { name: 'Schwer', from: 281, to: 450, desc: 'Kleinere Kreise und bekanntere Alt-Kennzeichen, z. B. KU, NDH, WAN.' },
-    profi:  { name: 'Profi',  from: 451, to: 9999, desc: 'Die seltensten Kennzeichen – fast nur Alt-Kennzeichen wie BÜD, HDL, WOS.' },
+    leicht: { name: 'Leicht', from: 1, to: 100, desc: 'Kennzeichen mit über 125.000 zugelassenen Autos.' },
+    mittel: { name: 'Mittel', from: 101, to: 280, desc: 'Kennzeichen mit 50.000–125.000 zugelassenen Autos.' },
+    schwer: { name: 'Schwer', from: 281, to: 450, desc: 'Kennzeichen mit 7.000–50.000 zugelassenen Autos.' },
+    profi:  { name: 'Profi',  from: 451, to: 9999, desc: 'Kennzeichen mit unter 7.000 zugelassenen Autos – fast nur Alt-Kennzeichen.' },
   };
   // Tagesrätsel: jede Runde etwas seltener
   const DAILY_BANDS = [[1, 80], [81, 180], [181, 300], [301, 450], [451, 9999]];
@@ -649,7 +649,7 @@
   }
   function setMode(mode) {
     if (mode === 'endless' && !dailyDone()) {
-      toast('Löse zuerst das heutige Rätsel 🔒');
+      toast('Löse zuerst das aktuelle Rätsel 🔒');
       return;
     }
     game.mode = mode;
