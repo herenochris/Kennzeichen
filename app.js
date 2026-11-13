@@ -6,7 +6,18 @@
   const MAX_POINTS = 1000;
   const ENDLESS_FAIL_KM = 200;
   const EPOCH = '2026-11-13'; // Rätsel #1
-  const LETTERS = 'ABCDEFGHIJKLMNOPRSTUVWXYZ'; // ohne Q (wie üblich selten)
+  const DAILY_V2_FROM = '2026-11-14'; // ab hier steigt die Schwierigkeit pro Runde
+  const LETTERS = 'ABCDEFGHIJKLMNOPRSTUVWXYZ';
+
+  // Schwierigkeit = Rang nach geschätzter Fahrzeugzahl (1 = am häufigsten)
+  const LEVELS = {
+    leicht: { name: 'Leicht', from: 1, to: 100, desc: 'Die 100 häufigsten Kennzeichen – Großstädte und große Kreise wie B, M, HH, K.' },
+    mittel: { name: 'Mittel', from: 101, to: 280, desc: 'Mittelgroße Kreise und Städte, z. B. GT, VS, BAD, OL.' },
+    schwer: { name: 'Schwer', from: 281, to: 450, desc: 'Kleinere Kreise und bekanntere Alt-Kennzeichen, z. B. KU, NDH, WAN.' },
+    profi:  { name: 'Profi',  from: 451, to: 9999, desc: 'Die seltensten Kennzeichen – fast nur Alt-Kennzeichen wie BÜD, HDL, WOS.' },
+  };
+  // Tagesrätsel: jede Runde etwas seltener
+  const DAILY_BANDS = [[1, 80], [81, 180], [181, 300], [301, 450], [451, 9999]];
 
   // ---------- Hilfsfunktionen ----------
   const $ = (id) => document.getElementById(id);
@@ -56,10 +67,15 @@
   function fmtNum(n) { return Math.round(n).toLocaleString('de-DE'); }
   function quality(km) { return km <= 40 ? 'good' : km <= 120 ? 'mid' : 'bad'; }
   function emoji(km) { return km <= 15 ? '🎯' : km <= 40 ? '🟩' : km <= 120 ? '🟨' : km <= 250 ? '🟧' : '🟥'; }
+  function levelOf(p) {
+    for (const [key, l] of Object.entries(LEVELS)) if (p.r >= l.from && p.r <= l.to) return key;
+    return 'profi';
+  }
+  const byCode = Object.fromEntries(PLATES.map((p) => [p.c, p]));
 
   // Zufälliger Rest des Kennzeichens (max. 8 Zeichen insgesamt)
   function plateRest(code, rnd) {
-    const nLetters = code.length === 3 ? 1 + Math.floor(rnd() * 2) : 1 + Math.floor(rnd() * 2);
+    const nLetters = 1 + Math.floor(rnd() * 2);
     let letters = '';
     for (let i = 0; i < nLetters; i++) letters += LETTERS[Math.floor(rnd() * LETTERS.length)];
     const maxDigits = Math.min(4, 8 - code.length - nLetters);
@@ -97,8 +113,6 @@
     maxZoom: 11,
     maxBounds: GERMANY_BOUNDS.pad(0.35),
     maxBoundsViscosity: 0.8,
-    attributionControl: true,
-    zoomControl: true,
   });
   map.attributionControl.setPrefix(false);
   map.attributionControl.addAttribution('Umrisse: <a href="https://github.com/isellsoap/deutschlandGeoJSON" target="_blank" rel="noopener">deutschlandGeoJSON</a>, Orte: GeoNames');
@@ -113,11 +127,8 @@
 
   function fitGermany() { map.fitBounds(GERMANY_BOUNDS, { padding: [10, 10] }); }
   fitGermany();
-  window.addEventListener('resize', () => { map.invalidateSize(); });
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    statesLayer.setStyle(stateStyle());
-    if (game.hintState) highlightState(game.hintState);
-  });
+  window.addEventListener('resize', fitPlate);
+  new ResizeObserver(() => map.invalidateSize()).observe($('map'));
 
   const overlay = L.layerGroup().addTo(map);
   let guessMarker = null;
@@ -139,52 +150,82 @@
       }).addTo(overlay);
     }
   }
+  // Kartenausschnitt so wählen, dass das Ergebnis-Popup nichts verdeckt
+  function fitWithSheet(bounds, maxZoom) {
+    const mapRect = $('map').getBoundingClientRect();
+    const sheet = $('result');
+    let bottom = 40;
+    if (!sheet.hidden) {
+      const r = sheet.getBoundingClientRect();
+      bottom = Math.max(40, mapRect.bottom - r.top + 24);
+    }
+    if (bottom > mapRect.height - 80) bottom = Math.max(40, mapRect.height - 80);
+    map.flyToBounds(bounds, { paddingTopLeft: [50, 50], paddingBottomRight: [50, bottom], maxZoom, duration: 0.6 });
+  }
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    statesLayer.setStyle(stateStyle());
+    if (game.hintState) highlightState(game.hintState);
+  });
 
   // ---------- Spielzustand ----------
   const game = {
     mode: 'daily',
-    plate: null,      // aktuelles Datenobjekt
+    plate: null,
     rest: '',
-    guess: null,      // {lat, lon}
+    guess: null,
     answered: false,
     hintState: null,
-    // Tägliches
     dailyDate: null,
     dailyList: [],
     dailyRests: [],
-    daily: null,      // gespeicherter Fortschritt
-    // Endlos
+    daily: null,
+    level: 'leicht',
     run: null,
   };
 
   // ---------- Tägliches Rätsel ----------
-  function dailyPicks(dateStr) {
+  function dailyPicksV1(dateStr) {
     const rnd = mulberry32(hashString('kz-' + dateStr));
     const pool = PLATES.map((_, i) => i);
     const picks = [];
     const usedStates = new Set();
-    // 5 Kennzeichen, möglichst aus verschiedenen Bundesländern, überwiegend aktuelle Kürzel
     while (picks.length < DAILY_ROUNDS) {
       const idx = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
       const p = PLATES[idx];
-      const wantMain = picks.length < 3;
-      if (wantMain && !p.m) continue;
+      if (picks.length < 3 && !p.m) continue;
       if (usedStates.has(p.s) && pool.length > 50) continue;
       usedStates.add(p.s);
       picks.push(idx);
     }
-    const rests = picks.map((i) => plateRest(PLATES[i].c, rnd));
-    return { picks, rests };
+    return { picks, rnd };
+  }
+  function dailyPicksV2(dateStr) {
+    const rnd = mulberry32(hashString('kz2-' + dateStr));
+    const picks = [];
+    const usedStates = new Set();
+    DAILY_BANDS.forEach(([from, to]) => {
+      const band = PLATES.map((p, i) => i).filter((i) => PLATES[i].r >= from && PLATES[i].r <= to);
+      let idx, tries = 0;
+      do { idx = band[Math.floor(rnd() * band.length)]; tries++; }
+      while ((usedStates.has(PLATES[idx].s) || picks.includes(idx)) && tries < 50);
+      usedStates.add(PLATES[idx].s);
+      picks.push(idx);
+    });
+    return { picks, rnd };
   }
 
   function loadDaily() {
     const date = berlinDate();
-    const { picks, rests } = dailyPicks(date);
+    const { picks, rnd } = date >= DAILY_V2_FROM ? dailyPicksV2(date) : dailyPicksV1(date);
     game.dailyDate = date;
     game.dailyList = picks;
-    game.dailyRests = rests;
+    game.dailyRests = picks.map((i) => plateRest(PLATES[i].c, rnd));
     game.daily = store.get('kz-daily-' + date, { guesses: [] });
   }
+  const dailyPlate = (i) => PLATES[game.dailyList[i]];
+  function dailyTotal() { return game.daily.guesses.reduce((s, g) => s + g.pts, 0); }
+  const dailyDone = () => game.daily.guesses.length >= DAILY_ROUNDS;
 
   function startDaily() {
     if (game.dailyDate !== berlinDate()) loadDaily();
@@ -194,33 +235,29 @@
       showSummary();
       return;
     }
-    setupRound(PLATES[game.dailyList[n]], game.dailyRests[n]);
+    setupRound(dailyPlate(n), game.dailyRests[n]);
   }
 
-  function dailyTotal() { return game.daily.guesses.reduce((s, g) => s + g.pts, 0); }
-
   function showDailyReview() {
-    // Alle Tipps des Tages auf der Karte zeigen
+    hideSheet();
     clearOverlay();
-    const bounds = [];
+    const pts = [];
     game.daily.guesses.forEach((g, i) => {
-      const p = PLATES[game.dailyList[i]];
-      drawResult({ lat: g.lat, lon: g.lon }, p, false);
-      bounds.push([g.lat, g.lon], [p.lat, p.lon]);
+      const p = dailyPlate(i);
+      drawResult({ lat: g.lat, lon: g.lon }, p);
+      pts.push([g.lat, g.lon], [p.lat, p.lon]);
     });
-    if (bounds.length) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
-    const last = PLATES[game.dailyList[DAILY_ROUNDS - 1]];
-    renderPlate(last.c, game.dailyRests[DAILY_ROUNDS - 1], false);
+    if (pts.length) fitWithSheet(L.latLngBounds(pts), 7);
+    renderPlate(dailyPlate(DAILY_ROUNDS - 1).c, game.dailyRests[DAILY_ROUNDS - 1], false);
+    game.answered = true;
     $('round-label').textContent = 'Rätsel #' + (dayIndex(game.dailyDate) + 1) + ' – fertig';
     $('score-label').textContent = fmtNum(dailyTotal()) + ' Punkte';
     $('prompt').className = 'prompt';
-    $('prompt').innerHTML = 'Du hast das heutige Rätsel gelöst. Morgen gibt es neue Kennzeichen – oder spiel weiter im <b>Endlos-Modus</b>.';
-    $('actions-guess').hidden = true;
-    $('result').hidden = false;
-    $('result-points').innerHTML = fmtNum(dailyTotal()) + ' <small>/ ' + fmtNum(DAILY_ROUNDS * MAX_POINTS) + '</small>';
-    $('result-dist').textContent = '';
-    $('result-origin').textContent = '';
-    $('next-btn').textContent = 'Ergebnis anzeigen';
+    $('prompt').innerHTML = 'Du hast das heutige Rätsel gelöst (<b></b> Punkte). Morgen gibt es neue Kennzeichen – oder spiel weiter im <b>Endlos-Modus</b>.';
+    $('prompt').querySelector('b').textContent = fmtNum(dailyTotal());
+    $('hint-btn').hidden = true;
+    $('guess-btn').hidden = true;
+    $('review-btn').hidden = false;
   }
 
   function updateStatsAfterDaily() {
@@ -245,7 +282,7 @@
     const list = $('sum-list');
     list.innerHTML = '';
     game.daily.guesses.forEach((g, i) => {
-      const p = PLATES[game.dailyList[i]];
+      const p = dailyPlate(i);
       const li = document.createElement('li');
       li.innerHTML =
         '<span class="mini-plate"></span>' +
@@ -272,8 +309,7 @@
   }
 
   function tickCountdown() {
-    const now = new Date();
-    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(now);
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
     const get = (t) => Number(parts.find((x) => x.type === t).value);
     let left = 86400 - (get('hour') * 3600 + get('minute') * 60 + get('second'));
     const h = Math.floor(left / 3600); left %= 3600;
@@ -282,44 +318,53 @@
   }
   setInterval(() => {
     if ($('summary').open) tickCountdown();
-    // Tageswechsel während das Spiel offen ist
-    if (game.mode === 'daily' && game.dailyDate && game.dailyDate !== berlinDate() && !$('summary').open && game.answered) {
+    if (game.mode === 'daily' && game.dailyDate && game.dailyDate !== berlinDate() && !$('summary').open && game.answered && $('result').hidden) {
       loadDaily();
+      startDaily();
     }
   }, 1000);
 
   // ---------- Endlos ----------
   function endlessPool() {
-    return $('hard-toggle').checked ? PLATES : PLATES.filter((p) => p.m);
+    const l = LEVELS[game.level];
+    return PLATES.filter((p) => p.r >= l.from && p.r <= l.to);
   }
+  const bestKey = () => 'kz-endless-best-' + game.level;
   function newRun() {
-    game.run = { rounds: 0, points: 0, kmSum: 0, over: false, recent: [] };
+    // zuletzt gesehene Kennzeichen über Läufe hinweg merken, damit sich nichts sofort wiederholt
+    const recent = game.run && game.runLevel === game.level ? game.run.recent : [];
+    game.runLevel = game.level;
+    game.run = { rounds: 0, points: 0, kmSum: 0, over: false, recent };
   }
   function nextEndless() {
     if (!game.run || game.run.over) newRun();
     const pool = endlessPool();
+    const keep = Math.min(40, Math.floor(pool.length / 2));
     let p;
-    do { p = pool[Math.floor(Math.random() * pool.length)]; } while (game.run.recent.includes(p.c) && pool.length > 30);
+    do { p = pool[Math.floor(Math.random() * pool.length)]; } while (game.run.recent.includes(p.c));
     game.run.recent.push(p.c);
-    if (game.run.recent.length > 30) game.run.recent.shift();
+    while (game.run.recent.length > keep) game.run.recent.shift();
     setupRound(p, plateRest(p.c, Math.random));
   }
   function renderEndlessStats() {
     const r = game.run;
     $('es-rounds').textContent = r ? r.rounds : 0;
     $('es-avg').textContent = r && r.rounds ? fmtKm(r.kmSum / r.rounds) : '–';
-    $('es-best').textContent = fmtNum(store.get('kz-endless-best', 0));
+    $('es-best').textContent = fmtNum(store.get(bestKey(), 0));
+  }
+  function renderLevels() {
+    document.querySelectorAll('.level').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.level === game.level)));
+    $('level-desc').textContent = LEVELS[game.level].desc;
+  }
+  function setLevel(level) {
+    if (!LEVELS[level]) return;
+    game.level = level;
+    store.set('kz-level', level);
+    renderLevels();
+    if (game.mode === 'endless') { newRun(); nextEndless(); }
   }
 
   // ---------- Runde ----------
-  function renderPlate(code, rest, animate = true) {
-    $('plate-code').textContent = code;
-    $('plate-rest').textContent = rest;
-    fitPlate();
-    const el = $('plate');
-    if (animate) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
-  }
-
   function fitPlate() {
     const box = document.querySelector('.plate-text');
     box.style.fontSize = '';
@@ -329,7 +374,15 @@
       box.style.fontSize = size + 'px';
     }
   }
-  window.addEventListener('resize', fitPlate);
+  function renderPlate(code, rest, animate = true) {
+    $('plate-code').textContent = code;
+    $('plate-rest').textContent = rest;
+    fitPlate();
+    const el = $('plate');
+    if (animate) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  }
+
+  function hideSheet() { $('result').hidden = true; document.body.classList.remove('answered'); map.invalidateSize(); }
 
   function setupRound(plate, rest) {
     game.plate = plate;
@@ -337,21 +390,23 @@
     game.guess = null;
     game.answered = false;
     game.hintState = null;
+    hideSheet();
     clearOverlay();
     fitGermany();
     renderPlate(plate.c, rest);
     $('prompt').className = 'prompt';
     $('prompt').textContent = 'Woher kommt dieses Kennzeichen? Tippe auf die Karte.';
-    $('actions-guess').hidden = false;
+    $('hint-btn').hidden = false;
+    $('guess-btn').hidden = false;
+    $('review-btn').hidden = true;
     $('guess-btn').disabled = true;
     $('hint-btn').disabled = false;
-    $('result').hidden = true;
     if (game.mode === 'daily') {
       const n = game.daily.guesses.length;
       $('round-label').textContent = 'Rätsel #' + (dayIndex(game.dailyDate) + 1) + ' · Runde ' + (n + 1) + ' / ' + DAILY_ROUNDS;
       $('score-label').textContent = fmtNum(dailyTotal()) + ' Punkte';
     } else {
-      $('round-label').textContent = 'Endlos · Runde ' + (game.run.rounds + 1);
+      $('round-label').textContent = 'Endlos · ' + LEVELS[game.level].name + ' · Runde ' + (game.run.rounds + 1);
       $('score-label').textContent = fmtNum(game.run.points) + ' Punkte';
       renderEndlessStats();
     }
@@ -366,17 +421,18 @@
     $('prompt').innerHTML = 'Hinweis: Das Kennzeichen kommt aus <b></b>.';
     $('prompt').querySelector('b').textContent = game.plate.s;
     const l = stateLayers[game.plate.s];
-    if (l) map.fitBounds(l.getBounds(), { padding: [30, 30], maxZoom: 8 });
+    if (l) map.flyToBounds(l.getBounds(), { padding: [30, 30], maxZoom: 8, duration: 0.5 });
   }
 
-  function drawResult(guess, plate, animate) {
+  function drawResult(guess, plate) {
     const g = [guess.lat, guess.lon], t = [plate.lat, plate.lon];
     L.polyline([g, t], { color: css('--text'), weight: 2, dashArray: '6 6', opacity: 0.7 }).addTo(overlay);
     L.circleMarker(g, { radius: 7, color: '#fff', weight: 3, fillColor: css('--accent'), fillOpacity: 1 }).addTo(overlay);
     const tm = L.circleMarker(t, { radius: 9, color: '#fff', weight: 3, fillColor: '#d62828', fillOpacity: 1 }).addTo(overlay);
     tm.bindTooltip(plate.c + ' · ' + plate.o, { permanent: true, direction: 'top', offset: [0, -8], className: 'target-label' });
-    if (animate) map.flyToBounds(L.latLngBounds([g, t]), { padding: [60, 60], maxZoom: 8, duration: 0.6 });
   }
+
+  const LEVEL_TAG = { leicht: 'häufig', mittel: 'mittel', schwer: 'selten', profi: 'sehr selten' };
 
   function submitGuess() {
     if (!game.guess || game.answered) return;
@@ -388,10 +444,9 @@
 
     clearOverlay();
     if (hinted) highlightState(p.s);
-    drawResult(game.guess, p, true);
+    drawResult(game.guess, p);
 
-    $('actions-guess').hidden = true;
-    $('result').hidden = false;
+    // Popup füllen
     $('result-points').innerHTML = '+' + fmtNum(pts) + ' <small>Punkte' + (hinted ? ' (Hinweis)' : '') + '</small>';
     const dist = $('result-dist');
     dist.className = 'result-dist c-' + quality(km);
@@ -400,37 +455,54 @@
     origin.innerHTML = '<b></b> – <span class="o"></span><br><span class="k"></span>';
     origin.querySelector('b').textContent = p.c;
     origin.querySelector('.o').textContent = p.o;
-    origin.querySelector('.k').textContent = (p.k && p.k !== p.o ? p.k + ', ' : '') + p.s + (p.m ? '' : ' · Alt-Kennzeichen');
+    origin.querySelector('.k').textContent = (p.k && p.k !== p.o ? p.k + ', ' : '') + p.s;
+    const tags = $('result-tags');
+    tags.innerHTML = '';
+    const addTag = (text, cls) => { const s = document.createElement('span'); s.className = 'tag ' + (cls || ''); s.textContent = text; tags.appendChild(s); };
+    addTag(LEVEL_TAG[levelOf(p)], 'tag-' + levelOf(p));
+    if (!p.m) addTag('Alt-Kennzeichen');
+    const note = $('result-note');
+    note.hidden = true;
     $('prompt').className = 'prompt';
-    $('prompt').textContent = '';
+    $('prompt').textContent = 'Auflösung siehe unten.';
 
     if (game.mode === 'daily') {
-      game.daily.guesses.push({ lat: +game.guess.lat.toFixed(4), lon: +game.guess.lon.toFixed(4), km: +km.toFixed(1), pts, hint: hinted });
+      game.daily.guesses.push({ c: p.c, lat: +game.guess.lat.toFixed(4), lon: +game.guess.lon.toFixed(4), km: +km.toFixed(1), pts, hint: hinted });
       store.set('kz-daily-' + game.dailyDate, game.daily);
       $('score-label').textContent = fmtNum(dailyTotal()) + ' Punkte';
-      const done = game.daily.guesses.length >= DAILY_ROUNDS;
-      $('next-btn').textContent = done ? 'Ergebnis anzeigen' : 'Nächstes Kennzeichen';
+      $('result-title').textContent = 'Runde ' + game.daily.guesses.length + ' / ' + DAILY_ROUNDS;
+      $('next-btn').textContent = dailyDone() ? 'Ergebnis anzeigen' : 'Nächstes Kennzeichen';
     } else {
       const r = game.run;
       r.rounds += 1; r.points += pts; r.kmSum += km;
-      if (r.points > store.get('kz-endless-best', 0)) store.set('kz-endless-best', r.points);
+      const best = store.get(bestKey(), 0);
+      const newBest = r.points > best;
+      if (newBest) store.set(bestKey(), r.points);
       $('score-label').textContent = fmtNum(r.points) + ' Punkte';
+      $('result-title').textContent = 'Endlos · Runde ' + r.rounds;
       if (km > ENDLESS_FAIL_KM) {
         r.over = true;
-        $('prompt').className = 'prompt hint';
-        $('prompt').innerHTML = 'Mehr als ' + ENDLESS_FAIL_KM + ' km daneben – <b>Lauf beendet</b> nach ' + r.rounds + ' Runde' + (r.rounds === 1 ? '' : 'n') + ' mit ' + fmtNum(r.points) + ' Punkten.';
+        note.hidden = false;
+        note.textContent = 'Mehr als ' + ENDLESS_FAIL_KM + ' km daneben – Lauf beendet nach ' + r.rounds + ' Runde' + (r.rounds === 1 ? '' : 'n') + ' mit ' + fmtNum(r.points) + ' Punkten.' + (newBest ? ' Neuer Rekord! 🏆' : '');
         $('next-btn').textContent = 'Neuer Lauf';
       } else {
         $('next-btn').textContent = 'Nächstes Kennzeichen';
       }
       renderEndlessStats();
     }
+
+    const sheet = $('result');
+    document.body.classList.add('answered');
+    map.invalidateSize();
+    sheet.hidden = false;
+    sheet.classList.remove('show'); void sheet.offsetWidth; sheet.classList.add('show');
+    fitWithSheet(L.latLngBounds([[game.guess.lat, game.guess.lon], [p.lat, p.lon]]), 8);
     $('next-btn').focus({ preventScroll: true });
   }
 
   function next() {
     if (game.mode === 'daily') {
-      if (game.daily.guesses.length >= DAILY_ROUNDS) { showDailyReview(); showSummary(); }
+      if (dailyDone()) { showDailyReview(); showSummary(); }
       else startDaily();
     } else {
       nextEndless();
@@ -442,9 +514,8 @@
     game.mode = mode;
     $('tab-daily').setAttribute('aria-selected', String(mode === 'daily'));
     $('tab-endless').setAttribute('aria-selected', String(mode === 'endless'));
-    $('endless-stats').hidden = mode !== 'endless';
-    $('hard-wrap').hidden = mode !== 'endless';
-    try { history.replaceState(null, '', mode === 'endless' ? '#endlos' : '#'); } catch { /* egal */ }
+    $('endless-box').hidden = mode !== 'endless';
+    try { history.replaceState(null, '', mode === 'endless' ? '#endlos' : location.pathname + location.search); } catch { /* egal */ }
     if (mode === 'daily') startDaily();
     else { if (!game.run || game.run.over) newRun(); nextEndless(); }
   }
@@ -452,7 +523,6 @@
   // ---------- Events ----------
   map.on('click', (e) => {
     if (game.answered) return;
-    if (game.mode === 'daily' && game.daily.guesses.length >= DAILY_ROUNDS) return;
     game.guess = { lat: e.latlng.lat, lon: e.latlng.lng };
     placeGuess(e.latlng);
     $('guess-btn').disabled = false;
@@ -460,11 +530,11 @@
   $('guess-btn').addEventListener('click', submitGuess);
   $('hint-btn').addEventListener('click', useHint);
   $('next-btn').addEventListener('click', next);
+  $('review-btn').addEventListener('click', showSummary);
   $('restart-btn').addEventListener('click', () => { newRun(); nextEndless(); });
-  $('hard-toggle').addEventListener('change', () => {
-    store.set('kz-hard', $('hard-toggle').checked);
-    if (game.mode === 'endless' && !game.answered && game.run && game.run.rounds === 0) nextEndless();
-  });
+  document.querySelectorAll('.level').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.level !== game.level || (game.run && game.run.rounds > 0)) setLevel(b.dataset.level);
+  }));
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
     if (b.dataset.mode !== game.mode) setMode(b.dataset.mode);
   }));
@@ -475,7 +545,8 @@
       if (navigator.share && matchMedia('(pointer: coarse)').matches) { await navigator.share({ text }); return; }
       await navigator.clipboard.writeText(text);
       toast('Ergebnis kopiert!');
-    } catch {
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
       toast('Kopieren nicht möglich');
     }
   });
@@ -483,13 +554,14 @@
   document.addEventListener('keydown', (e) => {
     if (document.querySelector('dialog[open]')) return;
     if (e.key === 'Enter') {
-      if (!game.answered && game.guess) submitGuess();
-      else if (game.answered) next();
+      if (!game.answered && game.guess) { e.preventDefault(); submitGuess(); }
+      else if (!$('result').hidden) { e.preventDefault(); next(); }
     }
   });
 
   // ---------- Start ----------
-  $('hard-toggle').checked = store.get('kz-hard', true);
+  game.level = LEVELS[store.get('kz-level', 'leicht')] ? store.get('kz-level', 'leicht') : 'leicht';
+  renderLevels();
   loadDaily();
   if (!store.get('kz-seen-help', false)) { store.set('kz-seen-help', true); $('help').showModal(); }
   setMode(location.hash === '#endlos' ? 'endless' : 'daily');

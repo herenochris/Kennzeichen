@@ -137,17 +137,41 @@ button { font: inherit; color: inherit; }
 .btn-ghost small { color: var(--muted); font-weight: 500; }
 .btn-link { background: none; color: var(--muted); text-decoration: underline; padding: 8px; }
 
-.result {
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 16px; display: flex; flex-direction: column; gap: 6px;
-  background: var(--surface-2);
+/* Ergebnis-Popup */
+.sheet {
+  position: fixed; z-index: 1000;
+  left: calc(380px + (100% - 380px) / 2); bottom: 24px;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 18px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.28);
+  padding: 16px 18px 18px;
+  display: flex; flex-direction: column; gap: 6px;
 }
-.result-points { font-size: 36px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.sheet.show { animation: sheet-in .28s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes sheet-in { from { transform: translate(-50%, 30px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+.sheet-title { font-size: 13px; font-weight: 600; color: var(--muted); }
+.sheet-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.result-points { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .result-points small { font-size: 16px; color: var(--muted); font-weight: 600; }
-.result-dist { font-weight: 600; }
-.result-origin { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+.result-dist { font-weight: 700; }
+.result-origin { color: var(--muted); font-size: 14px; }
 .result-origin b { color: var(--text); }
+.result-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.tag { font-size: 12px; font-weight: 650; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.tag-leicht { color: var(--good); }
+.tag-mittel { color: var(--mid); }
+.tag-schwer, .tag-profi { color: var(--bad); }
+.result-note { margin: 0 0 6px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-weight: 600; font-size: 14px; }
 .c-good { color: var(--good); } .c-mid { color: var(--mid); } .c-bad { color: var(--bad); }
+
+/* Schwierigkeit */
+.endless-box { display: flex; flex-direction: column; gap: 10px; }
+.levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 12px; }
+.level { border: 0; background: transparent; padding: 8px 4px; border-radius: 9px; font-weight: 650; font-size: 14px; color: var(--muted); cursor: pointer; }
+.level[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.level-desc { margin: 0; font-size: 13px; color: var(--muted); }
 
 .endless-stats {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;
@@ -158,9 +182,6 @@ button { font: inherit; color: inherit; }
 }
 .endless-stats b, .stats-row b { font-size: 20px; font-variant-numeric: tabular-nums; }
 .endless-stats span, .stats-row span { font-size: 12px; color: var(--muted); }
-.endless-stats .btn-link { grid-column: 1 / -1; }
-.hard-toggle { margin: 0; font-size: 14px; color: var(--muted); }
-.hard-toggle input { accent-color: var(--accent); }
 
 /* Map markers */
 .target-label {
@@ -226,10 +247,19 @@ button { font: inherit; color: inherit; }
   .seal { width: 14px; height: 14px; }
   .prompt { font-size: 14px; }
   .btn { padding: 10px 12px; font-size: 15px; }
-  .result { padding: 12px; flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 12px; }
+  .sheet { left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); padding: 14px 16px 16px; }
   .result-points { font-size: 28px; }
-  .result-origin { flex-basis: 100%; margin-bottom: 4px; }
-  .result .btn { flex-basis: 100%; }
+  .level { font-size: 13px; padding: 7px 2px; }
+  .level-desc { display: none; }
+  .endless-box { gap: 8px; }
+  .endless-stats > div { padding: 6px 4px; }
+  .endless-stats b { font-size: 15px; }
+  .endless-box .btn-link { padding: 0; font-size: 14px; }
+  /* Während der Auflösung: nur Kennzeichen zeigen, Karte bekommt den Platz */
+  body.answered .prompt, body.answered .actions, body.answered .endless-box { display: none; }
+  .sheet { gap: 4px; }
+  .sheet .result-origin { font-size: 13px; }
+  .result-tags { margin-bottom: 4px; }
   .endless-stats b { font-size: 16px; }
   .stats-row b { font-size: 18px; }
 }

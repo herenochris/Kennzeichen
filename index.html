@@ -38,33 +38,45 @@
 
       <p class="prompt" id="prompt">Woher kommt dieses Kennzeichen? Tippe auf die Karte.</p>
 
-      <div class="actions" id="actions-guess">
+      <div class="actions">
         <button class="btn btn-ghost" id="hint-btn">Hinweis: Bundesland <small>(−50 %)</small></button>
         <button class="btn btn-primary" id="guess-btn" disabled>Tipp abgeben</button>
+        <button class="btn btn-primary" id="review-btn" hidden>Ergebnis anzeigen</button>
       </div>
 
-      <div class="result" id="result" hidden>
-        <div class="result-points" id="result-points">0</div>
-        <div class="result-dist" id="result-dist"></div>
-        <div class="result-origin" id="result-origin"></div>
-        <button class="btn btn-primary" id="next-btn">Weiter</button>
+      <div class="endless-box" id="endless-box" hidden>
+        <div class="levels" role="group" aria-label="Schwierigkeit">
+          <button class="level" data-level="leicht">Leicht</button>
+          <button class="level" data-level="mittel">Mittel</button>
+          <button class="level" data-level="schwer">Schwer</button>
+          <button class="level" data-level="profi">Profi</button>
+        </div>
+        <p class="level-desc" id="level-desc"></p>
+        <div class="endless-stats">
+          <div><b id="es-rounds">0</b><span>Runden</span></div>
+          <div><b id="es-avg">–</b><span>Ø Entfernung</span></div>
+          <div><b id="es-best">0</b><span>Rekord</span></div>
+        </div>
+        <button class="btn btn-link" id="restart-btn">Lauf neu starten</button>
       </div>
-
-      <div class="endless-stats" id="endless-stats" hidden>
-        <div><b id="es-rounds">0</b><span>Runden</span></div>
-        <div><b id="es-avg">–</b><span>Ø Entfernung</span></div>
-        <div><b id="es-best">0</b><span>Bester Lauf</span></div>
-        <button class="btn btn-link" id="restart-btn">Neu starten</button>
-      </div>
-      <p class="hard-toggle" id="hard-wrap" hidden>
-        <label><input type="checkbox" id="hard-toggle" checked> Auch Alt-Kennzeichen (z. B. BÜD, WAN, LBZ)</label>
-      </p>
     </section>
 
     <section class="map-wrap">
       <div id="map" aria-label="Deutschlandkarte"></div>
     </section>
   </main>
+
+  <div class="sheet" id="result" role="dialog" aria-label="Auflösung" hidden>
+    <div class="sheet-title" id="result-title"></div>
+    <div class="sheet-row">
+      <div class="result-points" id="result-points">0</div>
+      <div class="result-dist" id="result-dist"></div>
+    </div>
+    <div class="result-origin" id="result-origin"></div>
+    <div class="result-tags" id="result-tags"></div>
+    <p class="result-note" id="result-note" hidden></p>
+    <button class="btn btn-primary" id="next-btn">Weiter</button>
+  </div>
 
   <dialog class="modal" id="summary">
     <form method="dialog" class="modal-inner">
@@ -93,10 +105,10 @@
       <ul>
         <li>Je näher du am Herkunftsort liegst, desto mehr Punkte (max. 1000 pro Runde).</li>
         <li>Der Hinweis zeigt das Bundesland, halbiert aber die Punkte der Runde.</li>
-        <li><b>Tägliches Rätsel:</b> jeden Tag 5 neue Kennzeichen – für alle gleich.</li>
-        <li><b>Endlos:</b> so viele Runden du willst. Der Lauf endet, wenn du in einer Runde mehr als 200 km danebenliegst.</li>
+        <li><b>Tägliches Rätsel:</b> jeden Tag 5 neue Kennzeichen – für alle gleich. Von Runde zu Runde werden sie seltener.</li>
+        <li><b>Endlos:</b> so viele Runden du willst, in vier Schwierigkeitsstufen. Je mehr Autos ein Kennzeichen tragen, desto leichter ist es. Der Lauf endet, wenn du mehr als 200 km danebenliegst.</li>
       </ul>
-      <p class="fine">Als Ziel gilt der Ort, nach dem das Kürzel benannt ist (meist die heutige oder frühere Kreisstadt).</p>
+      <p class="fine">Als Ziel gilt der Ort, nach dem das Kürzel benannt ist (meist die heutige oder frühere Kreisstadt). Die Häufigkeit ist anhand der Einwohnerzahlen im Einzugsgebiet geschätzt.</p>
       <div class="modal-actions"><button class="btn btn-primary" value="close">Los geht's</button></div>
     </form>
   </dialog>
