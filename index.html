@@ -42,22 +42,17 @@
         <button class="btn btn-ghost" id="hint-btn">Hinweis: Bundesland <small>(−50 %)</small></button>
         <button class="btn btn-primary" id="guess-btn" disabled>Tipp abgeben</button>
         <button class="btn btn-primary" id="review-btn" hidden>Ergebnis anzeigen</button>
+        <button class="btn btn-primary" id="runover-btn" hidden>Gesamtergebnis anzeigen</button>
       </div>
 
       <div class="endless-box" id="endless-box" hidden>
-        <div class="levels" role="group" aria-label="Schwierigkeit">
-          <button class="level" data-level="leicht">Leicht</button>
-          <button class="level" data-level="mittel">Mittel</button>
-          <button class="level" data-level="schwer">Schwer</button>
-          <button class="level" data-level="profi">Profi</button>
+        <div class="progress-head">
+          <span id="rp-label">Runde 1 · noch 2.500 Punkte nötig</span>
+          <b id="rp-points">0 / 2.500</b>
         </div>
-        <p class="level-desc" id="level-desc"></p>
-        <div class="endless-stats">
-          <div><b id="es-rounds">0</b><span>Runden</span></div>
-          <div><b id="es-avg">–</b><span>Ø Entfernung</span></div>
-          <div><b id="es-best">0</b><span>Rekord</span></div>
-        </div>
-        <button class="btn btn-link" id="restart-btn">Lauf neu starten</button>
+        <div class="progress" aria-hidden="true"><div class="progress-bar" id="rp-bar"></div><div class="progress-goal"></div></div>
+        <div class="dots" id="rp-dots"></div>
+        <p class="run-meta" id="rp-meta"></p>
       </div>
     </section>
 
@@ -107,6 +102,31 @@
     </form>
   </dialog>
 
+  <dialog class="modal" id="runover">
+    <form method="dialog" class="modal-inner">
+      <h2>Lauf beendet</h2>
+      <p class="fine" id="ro-sub"></p>
+      <p class="sum-total"><b id="ro-total">0</b> Punkte <span class="record" id="ro-record" hidden>🏆 Neuer Rekord!</span></p>
+      <ol class="sum-list" id="ro-list"></ol>
+      <div class="stats-row">
+        <div><b id="ro-rounds">0</b><span>Runden geschafft</span></div>
+        <div><b id="ro-plates">0</b><span>Kennzeichen</span></div>
+        <div><b id="ro-avg">–</b><span>Ø Entfernung</span></div>
+        <div><b id="ro-best">0</b><span>Rekord</span></div>
+      </div>
+      <div class="pick-level">
+        <h3>Neuer Lauf – wähle die Schwierigkeit</h3>
+        <div class="pick-grid">
+          <button type="button" class="pick" data-level="leicht"><b>Leicht</b><span>B, M, HH, K …</span></button>
+          <button type="button" class="pick" data-level="mittel"><b>Mittel</b><span>GT, VS, OL …</span></button>
+          <button type="button" class="pick" data-level="schwer"><b>Schwer</b><span>KU, NDH, WAN …</span></button>
+          <button type="button" class="pick" data-level="profi"><b>Profi</b><span>BÜD, HDL, WOS …</span></button>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-link" value="close">Karte ansehen</button></div>
+    </form>
+  </dialog>
+
   <dialog class="modal" id="help">
     <form method="dialog" class="modal-inner">
       <h2>So wird gespielt</h2>
@@ -115,7 +135,7 @@
         <li>Je näher du am Herkunftsort liegst, desto mehr Punkte (max. 1000 pro Runde).</li>
         <li>Der Hinweis zeigt das Bundesland, halbiert aber die Punkte der Runde.</li>
         <li><b>Tägliches Rätsel:</b> jeden Tag 5 neue Kennzeichen – für alle gleich. Von Runde zu Runde werden sie seltener.</li>
-        <li><b>Freier Modus</b> (nach dem Tagesrätsel): so viele Runden du willst, in vier Schwierigkeitsstufen. Je mehr Autos ein Kennzeichen tragen, desto leichter ist es. Der Lauf endet, wenn du mehr als 200 km danebenliegst.</li>
+        <li><b>Freier Modus</b> (nach dem Tagesrätsel): Du spielst Runden zu je 5 Kennzeichen. Holst du in einer Runde mindestens 2.500 Punkte, geht es weiter – sonst ist der Lauf beendet. Danach wählst du die Schwierigkeit für den nächsten Lauf: Je mehr Autos ein Kennzeichen tragen, desto leichter ist es.</li>
       </ul>
       <p class="fine">Als Ziel gilt der Ort, nach dem das Kürzel benannt ist (meist die heutige oder frühere Kreisstadt). Die Häufigkeit ist anhand der Einwohnerzahlen im Einzugsgebiet geschätzt.</p>
       <div class="modal-actions"><button class="btn btn-primary" value="close">Los geht's</button></div>

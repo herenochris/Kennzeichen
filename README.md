@@ -3,7 +3,7 @@
 Ein Ratespiel im Browser: Du siehst ein deutsches Kfz-Kennzeichen und tippst auf der Karte an, woher es kommt.
 
 - **Tägliches Rätsel** – startet immer beim Öffnen der Seite. Jeden Tag 5 Kennzeichen, für alle gleich (Tageswechsel um Mitternacht deutscher Zeit). Von Runde zu Runde werden sie seltener. Mit Serie, Statistik und teilbarem Ergebnis.
-- **Freier Modus** – wird nach dem Tagesrätsel freigeschaltet; die Schwierigkeit wählt man direkt in der Zusammenfassung. Beliebig viele Runden in vier Stufen: Leicht (Rang 1–100), Mittel (101–280), Schwer (281–450), Profi (451–697). Je mehr Autos ein Kennzeichen tragen, desto leichter. Der Lauf endet, wenn du mehr als 200 km danebenliegst.
+- **Freier Modus** – wird nach dem Tagesrätsel freigeschaltet. Gespielt wird in Runden zu je 5 Kennzeichen; wer in einer Runde unter 2.500 Punkten bleibt, fliegt raus. Danach zeigt ein Fenster das Gesamtergebnis, und nur dort wählt man die Schwierigkeit für den nächsten Lauf: Leicht (Rang 1–100), Mittel (101–280), Schwer (281–450), Profi (451–697). Je mehr Autos ein Kennzeichen tragen, desto leichter.
 - Punkte: bis zu 1000 pro Runde, je näher, desto mehr. Der Hinweis (Bundesland) halbiert die Punkte.
 
 ## Starten

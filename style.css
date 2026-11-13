@@ -233,6 +233,27 @@ button { font: inherit; color: inherit; }
   font-weight: 600; z-index: 2000; box-shadow: var(--shadow);
 }
 
+/* Rundenfortschritt im freien Modus */
+.progress-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; color: var(--muted); }
+.progress-head b { color: var(--text); font-variant-numeric: tabular-nums; }
+.progress { position: relative; height: 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.progress-bar { height: 100%; width: 0; background: var(--mid); border-radius: 999px; transition: width .4s ease; }
+.progress-bar.ok { background: var(--good); }
+.progress-goal { position: absolute; top: -2px; bottom: -2px; left: 50%; width: 2px; background: var(--text); opacity: .5; }
+.dots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.dot {
+  display: grid; place-items: center; height: 34px; border-radius: 9px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--muted); font-size: 14px; font-weight: 650;
+}
+.dot.now { border-color: var(--accent); color: var(--text); }
+.dot.done { font-size: 16px; }
+.run-meta { margin: 0; font-size: 13px; color: var(--muted); }
+.result-note.ok { color: var(--good); }
+.result-note.fail { color: var(--bad); }
+.round-row { grid-template-columns: 80px 1fr auto !important; }
+.record { font-size: 14px; font-weight: 700; color: var(--mid); margin-left: 6px; }
+
 /* Auswahl der Schwierigkeit in der Zusammenfassung */
 .pick-level { border-top: 1px solid var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .pick-level h3 { margin: 0; font-size: 17px; }
@@ -270,7 +291,7 @@ button { font: inherit; color: inherit; }
   .sheet { left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); padding: 14px 16px 16px; }
   .result-points { font-size: 28px; }
   .level { font-size: 13px; padding: 7px 2px; }
-  .level-desc { display: none; }
+  .dot { height: 28px; }
   .endless-box { gap: 8px; }
   .endless-stats > div { padding: 6px 4px; }
   .endless-stats b { font-size: 15px; }

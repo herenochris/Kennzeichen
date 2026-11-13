@@ -4,7 +4,8 @@
   // ---------- Konstanten ----------
   const DAILY_ROUNDS = 5;
   const MAX_POINTS = 1000;
-  const ENDLESS_FAIL_KM = 200;
+  const ROUND_SIZE = 5;       // Kennzeichen pro Runde im freien Modus
+  const PASS_POINTS = 2500;   // so viele Punkte braucht man pro Runde, um weiterzukommen
   const EPOCH = '2026-11-13'; // Rätsel #1
   const DAILY_V2_FROM = '2026-11-14'; // ab hier steigt die Schwierigkeit pro Runde
   const LETTERS = 'ABCDEFGHIJKLMNOPRSTUVWXYZ';
@@ -325,7 +326,8 @@
     }
   }, 1000);
 
-  // ---------- Endlos ----------
+  // ---------- Freier Modus ----------
+  // Ein Lauf besteht aus Runden zu je 5 Kennzeichen. Unter 2.500 Punkten in einer Runde ist der Lauf vorbei.
   function endlessPool() {
     const l = LEVELS[game.level];
     return PLATES.filter((p) => p.r >= l.from && p.r <= l.to);
@@ -333,36 +335,97 @@
   const bestKey = () => 'kz-endless-best-' + game.level;
   function newRun() {
     // zuletzt gesehene Kennzeichen über Läufe hinweg merken, damit sich nichts sofort wiederholt
-    const recent = game.run && game.runLevel === game.level ? game.run.recent : [];
-    game.runLevel = game.level;
-    game.run = { rounds: 0, points: 0, kmSum: 0, over: false, recent };
+    const recent = game.run && game.run.level === game.level ? game.run.recent : [];
+    game.run = { level: game.level, done: [], cur: [], total: 0, kmSum: 0, count: 0, over: false, newBest: false, recent };
   }
+  const roundNo = () => game.run.done.length + 1;
+  const curPoints = () => game.run.cur.reduce((s, g) => s + g.pts, 0);
   function nextEndless() {
-    if (!game.run || game.run.over) newRun();
+    const r = game.run;
+    if (r.cur.length >= ROUND_SIZE) {
+      r.done.push({ pts: curPoints(), passed: true });
+      r.cur = [];
+    }
     const pool = endlessPool();
     const keep = Math.min(40, Math.floor(pool.length / 2));
     let p;
-    do { p = pool[Math.floor(Math.random() * pool.length)]; } while (game.run.recent.includes(p.c));
-    game.run.recent.push(p.c);
-    while (game.run.recent.length > keep) game.run.recent.shift();
-    setupRound(p, plateRest(p.c, Math.random));
+    do { p = pool[Math.floor(Math.random() * pool.length)]; } while (r.recent.includes(p.c));
+    r.recent.push(p.c);
+    while (r.recent.length > keep) r.recent.shift();
+    r.pending = { p, rest: plateRest(p.c, Math.random) };
+    setupRound(r.pending.p, r.pending.rest);
   }
-  function renderEndlessStats() {
+  function renderRunProgress() {
     const r = game.run;
-    $('es-rounds').textContent = r ? r.rounds : 0;
-    $('es-avg').textContent = r && r.rounds ? fmtKm(r.kmSum / r.rounds) : '–';
-    $('es-best').textContent = fmtNum(store.get(bestKey(), 0));
+    const pts = curPoints();
+    const left = Math.max(0, PASS_POINTS - pts);
+    $('rp-label').textContent = 'Runde ' + roundNo() + ' · ' + (left > 0 ? 'noch ' + fmtNum(left) + ' Punkte nötig' : 'geschafft ✅');
+    $('rp-points').textContent = fmtNum(pts) + ' / ' + fmtNum(PASS_POINTS);
+    // Balken: Ziel liegt bei 2.500 von maximal 5.000
+    $('rp-bar').style.width = Math.min(100, pts / (ROUND_SIZE * MAX_POINTS) * 100) + '%';
+    $('rp-bar').classList.toggle('ok', pts >= PASS_POINTS);
+    const dots = $('rp-dots');
+    dots.innerHTML = '';
+    for (let i = 0; i < ROUND_SIZE; i++) {
+      const g = r.cur[i];
+      const d = document.createElement('span');
+      d.className = 'dot' + (g ? ' done' : i === r.cur.length && !game.answered ? ' now' : '');
+      d.textContent = g ? emoji(g.km) : String(i + 1);
+      dots.appendChild(d);
+    }
+    $('rp-meta').textContent = LEVELS[r.level].name + ' · Gesamt ' + fmtNum(r.total) + ' Punkte · Rekord ' + fmtNum(store.get(bestKey(), 0));
   }
-  function renderLevels() {
-    document.querySelectorAll('.level').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.level === game.level)));
-    $('level-desc').textContent = LEVELS[game.level].desc;
+  function finishRun() {
+    const r = game.run;
+    r.done.push({ pts: curPoints(), passed: false });
+    r.cur = [];
+    r.over = true;
+    const best = store.get(bestKey(), 0);
+    r.newBest = r.total > best;
+    if (r.newBest) store.set(bestKey(), r.total);
   }
-  function setLevel(level) {
-    if (!LEVELS[level]) return;
-    game.level = level;
-    store.set('kz-level', level);
-    renderLevels();
-    if (game.mode === 'endless') { newRun(); nextEndless(); }
+  function showRunOver() {
+    const r = game.run;
+    $('ro-sub').textContent = 'Freier Modus · ' + LEVELS[r.level].name;
+    $('ro-total').textContent = fmtNum(r.total);
+    $('ro-record').hidden = !r.newBest;
+    const list = $('ro-list');
+    list.innerHTML = '';
+    r.done.forEach((b, i) => {
+      const li = document.createElement('li');
+      li.className = 'round-row';
+      li.innerHTML = '<span class="rr-no"></span><span class="sub"></span><span class="pts"></span>';
+      li.querySelector('.rr-no').textContent = 'Runde ' + (i + 1);
+      li.querySelector('.sub').textContent = b.passed ? '✅ geschafft' : '❌ unter ' + fmtNum(PASS_POINTS);
+      li.querySelector('.pts').textContent = fmtNum(b.pts);
+      list.appendChild(li);
+    });
+    $('ro-rounds').textContent = r.done.filter((b) => b.passed).length;
+    $('ro-plates').textContent = r.count;
+    $('ro-avg').textContent = r.count ? fmtKm(r.kmSum / r.count) : '–';
+    $('ro-best').textContent = fmtNum(store.get(bestKey(), 0));
+    document.querySelectorAll('#runover .pick').forEach((b) => b.classList.toggle('current', b.dataset.level === r.level));
+    if (!$('runover').open) $('runover').showModal();
+  }
+  function showRunOverState() {
+    // Panel nach Ende des Laufs: nur noch das Gesamtergebnis aufrufen
+    hideSheet();
+    game.answered = true;
+    $('hint-btn').hidden = true;
+    $('guess-btn').hidden = true;
+    $('review-btn').hidden = true;
+    $('runover-btn').hidden = false;
+    $('prompt').className = 'prompt';
+    $('prompt').textContent = 'Lauf beendet. Wähle im Gesamtergebnis die Schwierigkeit für den nächsten Lauf.';
+    $('round-label').textContent = 'Frei · ' + LEVELS[game.run.level].name + ' · beendet';
+    $('score-label').textContent = fmtNum(game.run.total) + ' Punkte';
+    renderRunProgress();
+    showRunOver();
+  }
+  function startEndless(level) {
+    if (level) { game.level = level; store.set('kz-level', level); }
+    newRun();
+    setMode('endless');
   }
 
   // ---------- Runde ----------
@@ -400,16 +463,17 @@
     $('hint-btn').hidden = false;
     $('guess-btn').hidden = false;
     $('review-btn').hidden = true;
+    $('runover-btn').hidden = true;
     $('guess-btn').disabled = true;
     $('hint-btn').disabled = false;
     if (game.mode === 'daily') {
       const n = game.daily.guesses.length;
-      $('round-label').textContent = 'Rätsel #' + (dayIndex(game.dailyDate) + 1) + ' · Runde ' + (n + 1) + ' / ' + DAILY_ROUNDS;
+      $('round-label').textContent = 'Rätsel #' + (dayIndex(game.dailyDate) + 1) + ' · Kennzeichen ' + (n + 1) + ' / ' + DAILY_ROUNDS;
       $('score-label').textContent = fmtNum(dailyTotal()) + ' Punkte';
     } else {
-      $('round-label').textContent = 'Frei · ' + LEVELS[game.level].name + ' · Runde ' + (game.run.rounds + 1);
-      $('score-label').textContent = fmtNum(game.run.points) + ' Punkte';
-      renderEndlessStats();
+      $('round-label').textContent = 'Frei · ' + LEVELS[game.run.level].name + ' · Runde ' + roundNo() + ' · ' + (game.run.cur.length + 1) + ' / ' + ROUND_SIZE;
+      $('score-label').textContent = fmtNum(game.run.total) + ' Punkte';
+      renderRunProgress();
     }
   }
 
@@ -464,6 +528,7 @@
     if (!p.m) addTag('Alt-Kennzeichen');
     const note = $('result-note');
     note.hidden = true;
+    note.className = 'result-note';
     $('prompt').className = 'prompt';
     $('prompt').textContent = 'Auflösung siehe unten.';
 
@@ -471,25 +536,31 @@
       game.daily.guesses.push({ c: p.c, lat: +game.guess.lat.toFixed(4), lon: +game.guess.lon.toFixed(4), km: +km.toFixed(1), pts, hint: hinted });
       store.set('kz-daily-' + game.dailyDate, game.daily);
       $('score-label').textContent = fmtNum(dailyTotal()) + ' Punkte';
-      $('result-title').textContent = 'Runde ' + game.daily.guesses.length + ' / ' + DAILY_ROUNDS;
+      $('result-title').textContent = 'Kennzeichen ' + game.daily.guesses.length + ' / ' + DAILY_ROUNDS;
       $('next-btn').textContent = dailyDone() ? 'Ergebnis anzeigen' : 'Nächstes Kennzeichen';
     } else {
       const r = game.run;
-      r.rounds += 1; r.points += pts; r.kmSum += km;
-      const best = store.get(bestKey(), 0);
-      const newBest = r.points > best;
-      if (newBest) store.set(bestKey(), r.points);
-      $('score-label').textContent = fmtNum(r.points) + ' Punkte';
-      $('result-title').textContent = 'Frei · ' + LEVELS[game.level].name + ' · Runde ' + r.rounds;
-      if (km > ENDLESS_FAIL_KM) {
-        r.over = true;
+      r.pending = null;
+      r.cur.push({ c: p.c, km, pts, hint: hinted });
+      r.total += pts; r.kmSum += km; r.count += 1;
+      $('score-label').textContent = fmtNum(r.total) + ' Punkte';
+      $('result-title').textContent = 'Runde ' + roundNo() + ' · Kennzeichen ' + r.cur.length + ' / ' + ROUND_SIZE;
+      $('next-btn').textContent = 'Nächstes Kennzeichen';
+      if (r.cur.length >= ROUND_SIZE) {
+        const rp = curPoints();
         note.hidden = false;
-        note.textContent = 'Mehr als ' + ENDLESS_FAIL_KM + ' km daneben – Lauf beendet nach ' + r.rounds + ' Runde' + (r.rounds === 1 ? '' : 'n') + ' mit ' + fmtNum(r.points) + ' Punkten.' + (newBest ? ' Neuer Rekord! 🏆' : '');
-        $('next-btn').textContent = 'Neuer Lauf';
-      } else {
-        $('next-btn').textContent = 'Nächstes Kennzeichen';
+        if (rp >= PASS_POINTS) {
+          note.className = 'result-note ok';
+          note.textContent = '✅ Runde ' + roundNo() + ' geschafft: ' + fmtNum(rp) + ' von mindestens ' + fmtNum(PASS_POINTS) + ' Punkten. Weiter geht\'s!';
+          $('next-btn').textContent = 'Nächste Runde';
+        } else {
+          note.className = 'result-note fail';
+          note.textContent = '❌ Runde ' + roundNo() + ': nur ' + fmtNum(rp) + ' von ' + fmtNum(PASS_POINTS) + ' Punkten – der Lauf ist beendet.';
+          $('next-btn').textContent = 'Gesamtergebnis';
+          finishRun();
+        }
       }
-      renderEndlessStats();
+      renderRunProgress();
     }
 
     const sheet = $('result');
@@ -505,6 +576,8 @@
     if (game.mode === 'daily') {
       if (dailyDone()) { showDailyReview(); showSummary(); }
       else startDaily();
+    } else if (game.run.over) {
+      showRunOverState();
     } else {
       nextEndless();
     }
@@ -527,7 +600,10 @@
     $('tab-endless').setAttribute('aria-selected', String(mode === 'endless'));
     $('endless-box').hidden = mode !== 'endless';
     if (mode === 'daily') startDaily();
-    else { if (!game.run || game.run.over) newRun(); nextEndless(); }
+    else if (!game.run) { newRun(); nextEndless(); }
+    else if (game.run.over) showRunOverState();
+    else if (game.run.pending) setupRound(game.run.pending.p, game.run.pending.rest); // offenes Kennzeichen fortsetzen
+    else nextEndless();
   }
 
   // ---------- Events ----------
@@ -541,10 +617,7 @@
   $('hint-btn').addEventListener('click', useHint);
   $('next-btn').addEventListener('click', next);
   $('review-btn').addEventListener('click', showSummary);
-  $('restart-btn').addEventListener('click', () => { newRun(); nextEndless(); });
-  document.querySelectorAll('.level').forEach((b) => b.addEventListener('click', () => {
-    if (b.dataset.level !== game.level || (game.run && game.run.rounds > 0)) setLevel(b.dataset.level);
-  }));
+  $('runover-btn').addEventListener('click', showRunOver);
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
     if (b.dataset.mode !== game.mode) setMode(b.dataset.mode);
   }));
@@ -561,12 +634,8 @@
     }
   });
   document.querySelectorAll('.pick').forEach((b) => b.addEventListener('click', () => {
-    $('summary').close();
-    game.level = b.dataset.level;
-    store.set('kz-level', game.level);
-    renderLevels();
-    newRun();
-    setMode('endless');
+    document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+    startEndless(b.dataset.level);
   }));
   document.addEventListener('keydown', (e) => {
     if (document.querySelector('dialog[open]')) return;
@@ -578,7 +647,6 @@
 
   // ---------- Start ----------
   game.level = LEVELS[store.get('kz-level', 'leicht')] ? store.get('kz-level', 'leicht') : 'leicht';
-  renderLevels();
   loadDaily();
   if (!store.get('kz-seen-help', false)) { store.set('kz-seen-help', true); $('help').showModal(); }
   // Beim Öffnen der Seite immer zuerst das Tagesrätsel
