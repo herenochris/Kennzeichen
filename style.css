@@ -15,6 +15,8 @@
   --land: #fbfaf7;
   --land-line: #9aa3ad;
   --land-hint: #ffe9a8;
+  --city-dot: #59606b;
+  --city-text: #4a505a;
   --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08);
   --radius: 14px;
   color-scheme: light;
@@ -33,6 +35,8 @@
     --land: #262b33;
     --land-line: #4c5562;
     --land-hint: #5a4a17;
+    --city-dot: #8f98a6;
+    --city-text: #aab2bf;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
     color-scheme: dark;
   }
@@ -190,6 +194,16 @@ button { font: inherit; color: inherit; }
   font-weight: 700; padding: 3px 8px; box-shadow: var(--shadow);
 }
 .target-label::before { border-top-color: var(--eu) !important; }
+.city { pointer-events: none; }
+.city i {
+  position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--city-dot); box-shadow: 0 0 0 1.5px var(--land);
+}
+.city span {
+  position: absolute; left: 6px; top: -8px; white-space: nowrap;
+  font-size: 11px; font-weight: 600; line-height: 16px; color: var(--city-text);
+  text-shadow: 0 0 2px var(--land), 0 0 2px var(--land), 0 0 3px var(--land);
+}
 .state-label {
   background: transparent; border: 0; box-shadow: none; color: var(--muted);
   font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;

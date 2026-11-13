@@ -4,7 +4,7 @@ Ein Ratespiel im Browser: Du siehst ein deutsches Kfz-Kennzeichen und tippst auf
 
 - **Tägliches Rätsel** – startet immer beim Öffnen der Seite. Jeden Tag 5 Kennzeichen, für alle gleich (Tageswechsel um Mitternacht deutscher Zeit). Von Runde zu Runde werden sie seltener. Mit Serie, Statistik und teilbarem Ergebnis.
 - **Freier Modus** – wird nach dem Tagesrätsel freigeschaltet. Gespielt wird in Runden zu je 5 Kennzeichen; wer in einer Runde unter 2.500 Punkten bleibt, fliegt raus. Danach zeigt ein Fenster das Gesamtergebnis, und nur dort wählt man die Schwierigkeit für den nächsten Lauf: Leicht (Rang 1–100), Mittel (101–280), Schwer (281–450), Profi (451–697). Je mehr Autos ein Kennzeichen tragen, desto leichter.
-- Punkte: bis zu 1000 pro Runde, je näher, desto mehr. Der Hinweis (Bundesland) halbiert die Punkte.
+- Punkte: bis zu 1000 pro Kennzeichen. Bis 10 km volle Punktzahl, danach erst langsam fallend (50 km ≈ 968, 100 km ≈ 846, 200 km ≈ 474, 300 km ≈ 176). Der Hinweis (Bundesland) halbiert die Punkte.
 
 ## Starten
 
@@ -24,6 +24,7 @@ Zum Veröffentlichen genügt z. B. GitHub Pages (Branch auswählen, Ordner `/`).
 | `index.html`, `style.css`, `app.js` | Seite und Spiellogik |
 | `plates.js` | 697 Unterscheidungszeichen mit Herkunftsort, Kreis, Bundesland, Koordinaten (`m: 1` = aktuelles Hauptkennzeichen, `r` = Häufigkeitsrang) |
 | `germany.js` | Umrisse der Bundesländer |
+| `cities.js` | Großstädte zur Orientierung auf der Karte |
 | `vendor/leaflet/` | Leaflet 1.9.4 (Kartenbibliothek, BSD-2-Clause) |
 
 ## Quellen

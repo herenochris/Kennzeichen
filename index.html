@@ -132,12 +132,13 @@
       <h2>So wird gespielt</h2>
       <p>Du siehst ein deutsches Kfz-Kennzeichen. Tippe auf der Karte an, wo das Unterscheidungszeichen herkommt, und gib deinen Tipp ab.</p>
       <ul>
-        <li>Je näher du am Herkunftsort liegst, desto mehr Punkte (max. 1000 pro Runde).</li>
+        <li>Je näher du am Herkunftsort liegst, desto mehr Punkte (max. 1000 pro Kennzeichen). Bis 10 km gibt es die volle Punktzahl, kleine Abweichungen kosten kaum etwas.</li>
         <li>Der Hinweis zeigt das Bundesland, halbiert aber die Punkte der Runde.</li>
         <li><b>Tägliches Rätsel:</b> jeden Tag 5 neue Kennzeichen – für alle gleich. Von Runde zu Runde werden sie seltener.</li>
         <li><b>Freier Modus</b> (nach dem Tagesrätsel): Du spielst Runden zu je 5 Kennzeichen. Holst du in einer Runde mindestens 2.500 Punkte, geht es weiter – sonst ist der Lauf beendet. Danach wählst du die Schwierigkeit für den nächsten Lauf: Je mehr Autos ein Kennzeichen tragen, desto leichter ist es.</li>
       </ul>
       <p class="fine">Als Ziel gilt der Ort, nach dem das Kürzel benannt ist (meist die heutige oder frühere Kreisstadt). Die Häufigkeit ist anhand der Einwohnerzahlen im Einzugsgebiet geschätzt.</p>
+      <p class="fine">Kartendaten: Bundesländer von deutschlandGeoJSON, Orte von GeoNames (CC BY 4.0), Karte mit Leaflet.</p>
       <div class="modal-actions"><button class="btn btn-primary" value="close">Los geht's</button></div>
     </form>
   </dialog>
@@ -147,6 +148,7 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="plates.js"></script>
   <script src="germany.js"></script>
+  <script src="cities.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

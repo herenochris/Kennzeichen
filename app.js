@@ -60,8 +60,11 @@
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
     return 2 * R * Math.asin(Math.sqrt(h));
   }
+  // Punkte: bis 10 km volle Punktzahl, danach erst langsam, später schneller fallend
+  // (z. B. 50 km ≈ 968, 100 km ≈ 846, 150 km ≈ 667, 200 km ≈ 474, 300 km ≈ 176)
   function pointsFor(km, hinted) {
-    const p = km < 5 ? MAX_POINTS : Math.round(MAX_POINTS * Math.exp(-(km - 5) / 120));
+    const d = Math.max(0, km - 10) / 220;
+    const p = Math.round(MAX_POINTS * Math.exp(-d * d));
     return hinted ? Math.round(p / 2) : p;
   }
   function fmtKm(km) { return km < 10 ? km.toFixed(1).replace('.', ',') + ' km' : Math.round(km).toLocaleString('de-DE') + ' km'; }
@@ -114,9 +117,8 @@
     maxZoom: 11,
     maxBounds: GERMANY_BOUNDS.pad(0.35),
     maxBoundsViscosity: 0.8,
+    attributionControl: false,
   });
-  map.attributionControl.setPrefix(false);
-  map.attributionControl.addAttribution('Umrisse: <a href="https://github.com/isellsoap/deutschlandGeoJSON" target="_blank" rel="noopener">deutschlandGeoJSON</a>, Orte: GeoNames');
 
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   function stateStyle() {
@@ -125,6 +127,34 @@
   const statesLayer = L.geoJSON(GERMANY, { style: stateStyle, interactive: false }).addTo(map);
   const stateLayers = {};
   statesLayer.eachLayer((l) => { stateLayers[l.feature.properties.name] = l; });
+
+  // ---------- Städte zur Orientierung ----------
+  // Größere Städte zuerst; Namen, die sich mit einer größeren Stadt überschneiden würden, werden ausgeblendet.
+  map.createPane('cities');
+  map.getPane('cities').style.zIndex = 450;   // über den Bundesländern (400)
+  map.createPane('result');
+  map.getPane('result').style.zIndex = 500;   // Tipp und Auflösung über den Städten
+  map.getPane('cities').style.pointerEvents = 'none';
+  const cityLayer = L.layerGroup().addTo(map);
+  const cityMarkers = CITIES.map((c) => L.marker([c.lat, c.lon], {
+    pane: 'cities', interactive: false, keyboard: false,
+    icon: L.divIcon({ className: 'city', html: '<i></i><span>' + c.n + '</span>', iconSize: null, iconAnchor: [0, 0] }),
+  }));
+  function layoutCities() {
+    const boxes = [];
+    const size = map.getSize();
+    cityLayer.clearLayers();
+    CITIES.forEach((c, i) => {
+      const pt = map.latLngToContainerPoint([c.lat, c.lon]);
+      if (pt.x < -50 || pt.y < -20 || pt.x > size.x + 50 || pt.y > size.y + 20) return;
+      const w = c.n.length * 6.4 + 12;
+      const box = [pt.x - 4, pt.y - 8, pt.x + w, pt.y + 8];
+      if (boxes.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) return;
+      boxes.push(box);
+      cityLayer.addLayer(cityMarkers[i]);
+    });
+  }
+  map.on('zoomend moveend resize', layoutCities);
 
   function fitGermany() { map.fitBounds(GERMANY_BOUNDS, { padding: [10, 10] }); }
   fitGermany();
@@ -147,7 +177,7 @@
     if (guessMarker) guessMarker.setLatLng(latlng);
     else {
       guessMarker = L.circleMarker(latlng, {
-        radius: 8, color: '#fff', weight: 3, fillColor: css('--accent'), fillOpacity: 1,
+        radius: 8, color: '#fff', weight: 3, fillColor: css('--accent'), fillOpacity: 1, pane: 'result',
       }).addTo(overlay);
     }
   }
@@ -491,9 +521,9 @@
 
   function drawResult(guess, plate) {
     const g = [guess.lat, guess.lon], t = [plate.lat, plate.lon];
-    L.polyline([g, t], { color: css('--text'), weight: 2, dashArray: '6 6', opacity: 0.7 }).addTo(overlay);
-    L.circleMarker(g, { radius: 7, color: '#fff', weight: 3, fillColor: css('--accent'), fillOpacity: 1 }).addTo(overlay);
-    const tm = L.circleMarker(t, { radius: 9, color: '#fff', weight: 3, fillColor: '#d62828', fillOpacity: 1 }).addTo(overlay);
+    L.polyline([g, t], { color: css('--text'), weight: 2, dashArray: '6 6', opacity: 0.7, pane: 'result' }).addTo(overlay);
+    L.circleMarker(g, { radius: 7, color: '#fff', weight: 3, fillColor: css('--accent'), fillOpacity: 1, pane: 'result' }).addTo(overlay);
+    const tm = L.circleMarker(t, { radius: 9, color: '#fff', weight: 3, fillColor: '#d62828', fillOpacity: 1, pane: 'result' }).addTo(overlay);
     tm.bindTooltip(plate.c + ' · ' + plate.o, { permanent: true, direction: 'top', offset: [0, -8], className: 'target-label' });
   }
 
