@@ -8,10 +8,8 @@
   const PASS_POINTS = 2500;   // so viele Punkte braucht man pro Runde, um weiterzukommen
   const EPOCH = '2026-11-13'; // Rätsel #1
   const DAILY_V2_FROM = '2026-11-14'; // ab hier steigt die Schwierigkeit pro Runde
-  // Wie oft es ein neues Rätsel gibt. 1440 = täglich um Mitternacht (deutsche Zeit).
-  const PUZZLE_MINUTES = 2;
-  const PERIOD_MS = PUZZLE_MINUTES * 60000;
-  const EPOCH_MS = Date.parse(EPOCH + 'T00:00:00+01:00');
+  // Uhrzeiten (deutsche Zeit), zu denen es ein neues Rätsel gibt
+  const CHANGE_HOURS = [7, 19];
   const LETTERS = 'ABCDEFGHIJKLMNOPRSTUVWXYZ';
 
   // Schwierigkeit = Rang nach geschätzter Fahrzeugzahl (1 = am häufigsten)
@@ -37,20 +35,35 @@
     },
   };
 
-  // Kennung des aktuellen Rätsels: bei täglichem Rätsel das Datum, sonst die Nummer des Zeitfensters
+  // Kennung des aktuellen Rätsels: Datum + Nummer des Zeitfensters, z. B. 2026-11-14-1 (7–19 Uhr), 2026-11-14-2 (19–7 Uhr)
+  function berlinNow() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    }).formatToParts(new Date());
+    const get = (x) => parts.find((y) => y.type === x).value;
+    return { date: get('year') + '-' + get('month') + '-' + get('day'), sec: Number(get('hour')) * 3600 + Number(get('minute')) * 60 + Number(get('second')) };
+  }
+  function shiftDate(dateStr, days) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+  }
   function puzzleId() {
-    return PUZZLE_MINUTES === 1440 ? berlinDate() : 'p' + Math.floor(Date.now() / PERIOD_MS);
+    const { date, sec } = berlinNow();
+    let slot = -1;
+    CHANGE_HOURS.forEach((h, i) => { if (sec >= h * 3600) slot = i; });
+    if (slot < 0) return shiftDate(date, -1) + '-' + CHANGE_HOURS.length; // vor 7 Uhr: noch das Abendrätsel von gestern
+    return date + '-' + (slot + 1);
   }
   function puzzleNo(id) {
-    if (!id) return 0;
-    if (id[0] !== 'p') return dayIndex(id) + 1;
-    return Number(id.slice(1)) - Math.floor(EPOCH_MS / PERIOD_MS) + 1;
+    const m = /^(\d{4}-\d{2}-\d{2})(?:-(\d+))?$/.exec(id || '');
+    if (!m) return -1;
+    return dayIndex(m[1]) * CHANGE_HOURS.length + (m[2] ? Number(m[2]) : 1);
   }
   function secondsLeft() {
-    if (PUZZLE_MINUTES !== 1440) return Math.ceil((PERIOD_MS - (Date.now() % PERIOD_MS)) / 1000);
-    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
-    const get = (x) => Number(parts.find((y) => y.type === x).value);
-    return 86400 - (get('hour') * 3600 + get('minute') * 60 + get('second'));
+    const { sec } = berlinNow();
+    const next = CHANGE_HOURS.map((h) => h * 3600).find((s) => s > sec);
+    return next != null ? next - sec : 86400 - sec + CHANGE_HOURS[0] * 3600;
   }
   function berlinDate(d = new Date()) {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
@@ -271,10 +284,10 @@
 
   function loadDaily() {
     const date = puzzleId();
-    const { picks, rnd } = date[0] === 'p' || date >= DAILY_V2_FROM ? dailyPicksV2(date) : dailyPicksV1(date);
+    const { picks, rnd } = date.length > 10 || date >= DAILY_V2_FROM ? dailyPicksV2(date) : dailyPicksV1(date);
     // alte Rätsel-Spielstände aufräumen
     try {
-      Object.keys(localStorage).filter((k) => k.startsWith('kz-daily-p') && k !== 'kz-daily-' + date).forEach((k) => localStorage.removeItem(k));
+      Object.keys(localStorage).filter((k) => k.startsWith('kz-daily-') && k !== 'kz-daily-' + date).forEach((k) => localStorage.removeItem(k));
     } catch { /* egal */ }
     game.dailyDate = date;
     game.dailyList = picks;
@@ -704,7 +717,7 @@
   });
 
   // ---------- Start ----------
-  $('help-daily').textContent = PUZZLE_MINUTES === 1440 ? 'jeden Tag' : 'alle ' + PUZZLE_MINUTES + ' Minuten';
+  $('help-daily').textContent = 'zweimal täglich (um ' + CHANGE_HOURS.join(' und ') + ' Uhr)';
   game.level = LEVELS[store.get('kz-level', 'leicht')] ? store.get('kz-level', 'leicht') : 'leicht';
   loadDaily();
   if (!store.get('kz-seen-help', false)) { store.set('kz-seen-help', true); $('help').showModal(); }
