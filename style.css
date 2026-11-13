@@ -63,11 +63,11 @@ button { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--border);
   z-index: 10;
 }
-.brand { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.brand { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 2px; white-space: nowrap; letter-spacing: .01em; }
 .brand-d {
   display: inline-grid; place-items: center;
-  width: 22px; height: 28px; border-radius: 4px;
-  background: var(--eu); color: #fff; font-size: 13px;
+  width: 1.3em; height: 1.5em; border-radius: 5px;
+  background: var(--eu); color: #fff; font-size: 1em; font-weight: 800;
 }
 .tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 999px; margin-left: auto; }
 .tab {
@@ -288,7 +288,7 @@ button { font: inherit; color: inherit; }
 /* Mobile */
 @media (max-width: 760px) {
   .topbar { padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
-  .brand { font-size: 16px; }
+  .brand { font-size: 18px; }
   .tabs { order: 3; width: 100%; margin: 0; }
   .tab { flex: 1; }
   .tab.locked::after { content: " 🔒"; font-size: 11px; }
