@@ -60,11 +60,13 @@
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
     return 2 * R * Math.asin(Math.sqrt(h));
   }
-  // Punkte: bis 10 km volle Punktzahl, danach erst langsam, später schneller fallend
-  // (z. B. 50 km ≈ 968, 100 km ≈ 846, 150 km ≈ 667, 200 km ≈ 474, 300 km ≈ 176)
+  // Punkte: Mittelwert aus der ursprünglichen (strengen) und der großzügigen Kurve
+  // (z. B. 25 km ≈ 921, 50 km ≈ 827, 100 km ≈ 649, 150 km ≈ 483, 200 km ≈ 336, 300 km ≈ 131)
   function pointsFor(km, hinted) {
+    const strict = km < 5 ? 1 : Math.exp(-(km - 5) / 120);
     const d = Math.max(0, km - 10) / 220;
-    const p = Math.round(MAX_POINTS * Math.exp(-d * d));
+    const gentle = Math.exp(-d * d);
+    const p = Math.round(MAX_POINTS * (strict + gentle) / 2);
     return hinted ? Math.round(p / 2) : p;
   }
   function fmtKm(km) { return km < 10 ? km.toFixed(1).replace('.', ',') + ' km' : Math.round(km).toLocaleString('de-DE') + ' km'; }
