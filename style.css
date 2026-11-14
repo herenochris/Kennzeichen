@@ -188,6 +188,11 @@ button { font: inherit; color: inherit; }
 .endless-stats b, .stats-row b { font-size: 20px; font-variant-numeric: tabular-nums; }
 .endless-stats span, .stats-row span { font-size: 12px; color: var(--muted); }
 
+/* Impressum / Datenschutz */
+.legal-links { margin-top: auto; padding-top: 8px; font-size: 13px; color: var(--muted); }
+.legal-links a, .fine a { color: var(--muted); }
+body.answered .legal-links { display: none; }
+
 /* Map markers */
 .target-label {
   background: var(--eu); color: #fff; border: 0; border-radius: 6px;
